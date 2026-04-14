@@ -54,12 +54,17 @@ export default async function DashboardLayout({
             </div>
             <form action={async () => {
               'use server'
-              await signOut()
+              try {
+                await signOut()
+              } catch (error) {
+                console.error('退出登录失败:', error)
+                throw error
+              }
               redirect('/login')
             }}>
               <Button
                 type="submit"
-                className="w-full bg-white/10 text-white hover:bg-white/20 hover:text-white border-0"
+                className="w-full bg-white/10 text-white hover:bg-white/20 hover:text-white border-0 rounded-full"
                 size="sm"
               >
                 <LogOut className="w-4 h-4 mr-2" />

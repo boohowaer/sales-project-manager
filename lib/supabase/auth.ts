@@ -34,7 +34,13 @@ export async function signOut() {
 
   const { error } = await supabase.auth.signOut()
 
-  if (error) throw error
+  if (error) {
+    console.error('Sign out error:', error)
+    throw error
+  }
+
+  // 确保退出成功
+  return { success: true }
 }
 
 export async function getCurrentUser() {
