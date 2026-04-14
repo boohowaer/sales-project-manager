@@ -16,7 +16,7 @@ export function SidebarNavigation({ navigation }: SidebarNavigationProps) {
   const pathname = usePathname()
 
   return (
-    <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       {navigation.map((item) => {
         // 动态获取图标组件
         const Icon = LucideIcons[item.iconName as keyof typeof LucideIcons]

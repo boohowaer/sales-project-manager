@@ -21,8 +21,8 @@ export default async function DashboardLayout({
     { name: '仪表板', href: '/dashboard', iconName: 'LayoutDashboard' },
     { name: '客户', href: '/dashboard/customers', iconName: 'Users' },
     { name: '项目', href: '/dashboard/projects', iconName: 'FolderKanban' },
-    { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
     { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
+    { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
     { name: '设置', href: '/dashboard/settings', iconName: 'Settings' },
   ]
 
@@ -32,26 +32,23 @@ export default async function DashboardLayout({
       <aside className="fixed inset-y-0 left-0 z-50 w-64 shadow-lg" style={{ backgroundColor: '#090702' }}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex flex-col justify-center h-20 px-6 border-b pt-4" style={{ borderColor: '#1a1a1a' }}>
+          <div className="flex flex-col justify-center h-20 px-6" style={{ backgroundColor: '#090702' }}>
             <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#ffffff', fontFamily: 'var(--font-poppins), sans-serif' }}>Sales to Do</h1>
             <p className="text-xs" style={{ color: '#999999' }}>销售个人任务管理工具</p>
+          </div>
+
+          {/* 用户信息 */}
+          <div className="px-6 py-4">
+            <p className="text-sm font-medium text-white truncate">
+              {user.email}
+            </p>
           </div>
 
           {/* 导航 */}
           <SidebarNavigation navigation={navigation} />
 
-          {/* 用户信息 */}
-          <div className="p-4 border-t" style={{ borderColor: '#1a1a1a' }}>
-            <div className="flex items-center mb-4">
-              <div className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-white font-medium text-sm shadow-md">
-                {user.email?.[0].toUpperCase()}
-              </div>
-              <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {user.email}
-                </p>
-              </div>
-            </div>
+          {/* 退出登录按钮 */}
+          <div className="p-4">
             <LogoutButton />
           </div>
         </div>
