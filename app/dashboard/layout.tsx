@@ -2,8 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
-import { signOut } from '@/lib/supabase/auth'
 import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
+import { LogoutButton } from '@/components/auth/LogoutButton'
 
 export default async function DashboardLayout({
   children,
@@ -52,25 +52,7 @@ export default async function DashboardLayout({
                 </p>
               </div>
             </div>
-            <form action={async () => {
-              'use server'
-              try {
-                await signOut()
-              } catch (error) {
-                console.error('退出登录失败:', error)
-                throw error
-              }
-              redirect('/login')
-            }}>
-              <Button
-                type="submit"
-                className="w-full bg-white/10 text-white hover:bg-white/20 hover:text-white border-0 rounded-full"
-                size="sm"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                退出登录
-              </Button>
-            </form>
+            <LogoutButton />
           </div>
         </div>
       </aside>
