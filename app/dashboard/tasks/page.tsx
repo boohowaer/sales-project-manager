@@ -104,7 +104,7 @@ export default function TasksPage() {
       const primaryProjectId = selectedProjectIds[0]
 
       if (editingId) {
-        await updateTask(editingId, {
+        const updatedTask = await updateTask(editingId, {
           title: formData.title,
           description: formData.description || null,
           project_id: primaryProjectId,
@@ -113,8 +113,15 @@ export default function TasksPage() {
           status: formData.status as any
         })
         toast.success('任务更新成功')
+
+        // 直接更新本地状态
+        setTasks(prevTasks =>
+          prevTasks.map(t =>
+            t.id === editingId ? { ...t, ...updatedTask } : t
+          )
+        )
       } else {
-        await createTask({
+        const newTask = await createTask({
           title: formData.title,
           description: formData.description || null,
           project_id: primaryProjectId,
@@ -123,11 +130,13 @@ export default function TasksPage() {
           status: formData.status as any
         })
         toast.success('任务创建成功')
+
+        // 添加到本地列表
+        setTasks(prevTasks => [newTask, ...prevTasks])
       }
 
       setDialogOpen(false)
       resetForm()
-      loadData()
     } catch (error: any) {
       toast.error(error.message || '操作失败')
     }
@@ -135,12 +144,21 @@ export default function TasksPage() {
 
   const handleToggleComplete = async (task: Task) => {
     try {
+      const newStatus = task.status === 'completed' ? 'pending' : 'completed'
       await updateTask(task.id, {
-        status: task.status === 'completed' ? 'pending' : 'completed',
-        completed_at: task.status === 'completed' ? null : new Date().toISOString()
+        status: newStatus,
+        completed_at: newStatus === 'completed' ? new Date().toISOString() : null
       })
       toast.success('任务状态已更新')
-      loadData()
+
+      // 直接更新本地状态，立即反映排序变化
+      setTasks(prevTasks =>
+        prevTasks.map(t =>
+          t.id === task.id
+            ? { ...t, status: newStatus, completed_at: newStatus === 'completed' ? new Date().toISOString() : null }
+            : t
+        )
+      )
     } catch (error: any) {
       toast.error(error.message || '更新任务失败')
     }
@@ -154,7 +172,9 @@ export default function TasksPage() {
     try {
       await deleteTask(id)
       toast.success('任务删除成功')
-      loadData()
+
+      // 直接更新本地状态，避免页面跳转
+      setTasks(prevTasks => prevTasks.filter(t => t.id !== id))
     } catch (error: any) {
       toast.error(error.message || '删除任务失败')
     }
@@ -210,6 +230,24 @@ export default function TasksPage() {
     }
 
     return true
+  })
+
+  // 排序任务：已完成的任务排在最后，未完成的按截止日期和优先级排序
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    // 已完成的任务排在最后
+    if (a.status === 'completed' && b.status !== 'completed') return 1
+    if (a.status !== 'completed' && b.status === 'completed') return -1
+
+    // 如果都已完成或都未完成，按截止日期排序
+    if (a.due_date && b.due_date) {
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    }
+    if (a.due_date && !b.due_date) return -1
+    if (!a.due_date && b.due_date) return 1
+
+    // 如果都没有截止日期，按优先级排序
+    const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 }
+    return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder]
   })
 
   if (loading) {
@@ -408,7 +446,7 @@ export default function TasksPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {filteredTasks.map((task: any) => (
+                  {sortedTasks.map((task: any) => (
                     <tr
                       key={task.id}
                       className={`hover:bg-zinc-50 transition-colors ${

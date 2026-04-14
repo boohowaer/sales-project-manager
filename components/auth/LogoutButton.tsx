@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -38,14 +37,13 @@ export function LogoutButton() {
   }
 
   return (
-    <Button
+    <button
       onClick={handleLogout}
       disabled={loading}
-      className="w-full bg-white/10 text-white hover:bg-white/20 hover:text-white border-0 rounded-full"
-      size="sm"
+      className="flex items-center w-full px-3 py-2.5 pr-4 text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <LogOut className="w-4 h-4 mr-2" />
-      {loading ? '退出中...' : '退出登录'}
-    </Button>
+      <LogOut className="w-4.5 h-4.5 mr-4 transition-colors text-zinc-500" />
+      {loading ? 'Logging out...' : 'Log Out'}
+    </button>
   )
 }

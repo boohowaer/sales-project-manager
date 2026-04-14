@@ -60,6 +60,7 @@ export type Database = {
           has_start_notice: boolean
           contract_signed: boolean
           settlement_stages: number
+          belong_year: number | null
           created_at: string
           updated_at: string
         }
@@ -77,6 +78,7 @@ export type Database = {
           probability?: number
           created_at?: string
           updated_at?: string
+          belong_year?: number | null
         }
         Update: {
           id?: string
@@ -92,6 +94,7 @@ export type Database = {
           probability?: number
           created_at?: string
           updated_at?: string
+          belong_year?: number | null
         }
       }
       tasks: {

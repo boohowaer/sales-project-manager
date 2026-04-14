@@ -10,15 +10,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import type { Customer } from '@/types'
+import { ImportDialog } from '@/components/import/ImportDialog'
 
 export default function CustomersPage() {
   const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -140,13 +142,21 @@ export default function CustomersPage() {
           <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">客户管理</h1>
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">
-              <Plus className="w-4 h-4 mr-2" />
-              添加客户
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setImportDialogOpen(true)}
+            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            批量导入
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">
+                <Plus className="w-4 h-4 mr-2" />
+                添加客户
+              </Button>
+            </DialogTrigger>
           <DialogContent className="rounded-2xl shadow-xl border-0">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">{editingId ? "编辑客户" : "添加新客户"}</DialogTitle>
@@ -212,6 +222,7 @@ export default function CustomersPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* 客户列表 */}
@@ -281,6 +292,20 @@ export default function CustomersPage() {
           ))}
         </div>
       )}
+
+      {/* 批量导入对话框 */}
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImportSuccess={loadCustomers}
+        type="customers"
+        title="批量导入客户"
+        description="从CSV或Excel文件批量导入客户信息，请先下载模板并按照格式填写数据"
+        templateLinks={[
+          { label: '下载CSV模板', url: '/templates/customers_template.csv' },
+          { label: '下载Excel模板', url: '/templates/customers_template.xlsx' }
+        ]}
+      />
     </div>
   )
 }
