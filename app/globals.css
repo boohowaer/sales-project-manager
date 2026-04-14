@@ -50,7 +50,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-poppins), 'Inter', system-ui, -apple-system, sans-serif;
+  /* 字体由 FontProvider 动态设置，不使用固定字体 */
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

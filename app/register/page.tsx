@@ -50,8 +50,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#f0f0f0' }}>
-      <Card className="w-full max-w-md rounded-2xl shadow-xl border-0">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#e5e5e5' }}>
+      <Card className="w-full max-w-md rounded-2xl shadow-xl border-0 bg-white">
         <CardHeader className="space-y-1 pb-6">
           <CardTitle className="text-2xl font-bold text-center" style={{ color: '#090702' }}>注册账户</CardTitle>
           <CardDescription className="text-center text-zinc-600">
