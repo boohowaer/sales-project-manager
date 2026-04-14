@@ -137,72 +137,77 @@ export default function CustomersPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">客户管理</h1>
-          <p className="mt-2 text-gray-600">管理您的所有客户信息</p>
+          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">客户管理</h1>
+          <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">
               <Plus className="w-4 h-4 mr-2" />
               添加客户
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="rounded-2xl shadow-xl border-0">
             <DialogHeader>
-              <DialogTitle>{editingId ? "编辑客户" : "添加新客户"}</DialogTitle>
+              <DialogTitle className="text-lg font-semibold">{editingId ? "编辑客户" : "添加新客户"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <Label htmlFor="name">客户名称 *</Label>
+                <Label htmlFor="name" className="text-sm font-medium text-zinc-700">客户名称 *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="张三"
+                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
               <div>
-                <Label htmlFor="company">公司名称</Label>
+                <Label htmlFor="company" className="text-sm font-medium text-zinc-700">公司名称</Label>
                 <Input
                   id="company"
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                   placeholder="某某公司"
+                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
               <div>
-                <Label htmlFor="email">邮箱</Label>
+                <Label htmlFor="email" className="text-sm font-medium text-zinc-700">邮箱</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="customer@example.com"
+                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
               <div>
-                <Label htmlFor="phone">电话</Label>
+                <Label htmlFor="phone" className="text-sm font-medium text-zinc-700">电话</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="+86 138 0000 0000"
+                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
               <div>
-                <Label htmlFor="notes">备注</Label>
+                <Label htmlFor="notes" className="text-sm font-medium text-zinc-700">备注</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="客户的其他信息..."
+                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 resize-none"
                 />
               </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <div className="flex justify-end gap-2.5 pt-2">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-zinc-200 text-zinc-700 hover:bg-zinc-50">
                   取消
                 </Button>
-                <Button type="submit">{editingId ? '保存' : '创建'}</Button>
+                <Button type="submit" className="bg-zinc-900 text-white hover:bg-zinc-800">{editingId ? '保存' : '创建'}</Button>
               </div>
             </form>
           </DialogContent>
@@ -211,32 +216,33 @@ export default function CustomersPage() {
 
       {/* 客户列表 */}
       {customers.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <p className="text-gray-500 mb-4">还没有客户</p>
-            <Button onClick={() => setDialogOpen(true)}>
+        <Card className="rounded-2xl shadow-sm border-0 bg-white">
+          <CardContent className="text-center py-16">
+            <p className="text-zinc-400 mb-4">还没有客户</p>
+            <Button onClick={() => setDialogOpen(true)} className="bg-zinc-900 text-white hover:bg-zinc-800">
               <Plus className="w-4 h-4 mr-2" />
               添加第一个客户
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {customers.map((customer) => (
-            <Card key={customer.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card key={customer.id} className="rounded-2xl shadow-sm hover:shadow-md transition-all border-0 bg-white group">
+              <CardHeader className="pb-4">
                 <CardTitle className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{customer.name}</h3>
+                    <h3 className="font-semibold text-lg text-zinc-900">{customer.name}</h3>
                     {customer.company && (
-                      <p className="text-sm text-gray-600 mt-1">{customer.company}</p>
+                      <p className="text-sm text-zinc-500 mt-1">{customer.company}</p>
                     )}
                   </div>
-                  <div className="flex space-x-1">
+                  <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(customer)}
+                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -244,26 +250,30 @@ export default function CustomersPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(customer.id)}
+                      className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
                     >
-                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2.5">
                 {customer.email && (
-                  <p className="text-sm text-gray-600">
-                    📧 {customer.email}
+                  <p className="text-sm text-zinc-600 flex items-center gap-2">
+                    <span className="text-zinc-400">📧</span>
+                    {customer.email}
                   </p>
                 )}
                 {customer.phone && (
-                  <p className="text-sm text-gray-600">
-                    📱 {customer.phone}
+                  <p className="text-sm text-zinc-600 flex items-center gap-2">
+                    <span className="text-zinc-400">📱</span>
+                    {customer.phone}
                   </p>
                 )}
                 {customer.notes && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    📝 {customer.notes}
+                  <p className="text-sm text-zinc-500 mt-3 pt-3 border-t border-zinc-100 flex items-start gap-2">
+                    <span className="text-zinc-400 mt-0.5">📝</span>
+                    <span className="line-clamp-2">{customer.notes}</span>
                   </p>
                 )}
               </CardContent>

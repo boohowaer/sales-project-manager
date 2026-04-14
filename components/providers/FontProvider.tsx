@@ -10,7 +10,7 @@ interface FontContextType {
 }
 
 const FontContext = createContext<FontContextType>({
-  fontFamily: 'Inter',
+  fontFamily: 'Poppins, Inter',
   fontSize: 14
 })
 

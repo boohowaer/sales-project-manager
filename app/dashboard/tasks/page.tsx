@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Trash2, Check, Pencil } from 'lucide-react'
+import { Plus, Trash2, Check, Pencil, Search } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Task, Project } from '@/types'
@@ -35,6 +35,13 @@ export default function TasksPage() {
 
   useEffect(() => {
     loadData()
+
+    // 检查是否需要自动打开任务创建对话框
+    const shouldOpenDialog = sessionStorage.getItem('openTaskDialog')
+    if (shouldOpenDialog === 'true') {
+      setDialogOpen(true)
+      sessionStorage.removeItem('openTaskDialog')
+    }
   }, [])
 
   const loadData = async () => {
@@ -220,18 +227,21 @@ export default function TasksPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">任务管理</h1>
-          <p className="mt-1 text-sm text-gray-600">管理您的所有待办任务</p>
+          <h1 className="text-2xl font-semibold text-zinc-900 tracking-tight">任务管理</h1>
+          <p className="mt-1 text-sm text-zinc-500">管理您的所有待办任务</p>
         </div>
         <div className="flex gap-2">
-          <Input
-            placeholder="搜索项目或客户..."
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            className="w-48 h-9"
-          />
+          <div className="flex items-center gap-2">
+            <Search className="w-4 h-4 text-zinc-400" />
+            <Input
+              placeholder="搜索项目或客户..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-48 h-9 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+            />
+          </div>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-32 h-9">
+            <SelectTrigger className="w-32 h-9 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -246,39 +256,40 @@ export default function TasksPage() {
             if (!open) resetForm()
           }}>
             <DialogTrigger asChild>
-              <Button disabled={projects.length === 0} size="sm">
+              <Button disabled={projects.length === 0} size="sm" className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
                 <Plus className="w-4 h-4 mr-2" />
                 添加任务
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="rounded-2xl shadow-xl border-0">
               <DialogHeader>
-                <DialogTitle>{editingId ? '编辑任务' : '添加新任务'}</DialogTitle>
+                <DialogTitle className="text-lg font-semibold">{editingId ? '编辑任务' : '添加新任务'}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 {editingId && (() => {
                   const currentTask = tasks.find(t => t.id === editingId) as any
                   const customerName = currentTask?.projects?.customers?.name
                   return customerName ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                      <p className="text-sm text-blue-800">
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3">
+                      <p className="text-sm text-zinc-700">
                         <span className="font-medium">当前关联客户：</span>{customerName}
                       </p>
                     </div>
                   ) : null
                 })()}
                 <div>
-                  <Label htmlFor="title">任务标题 *</Label>
+                  <Label htmlFor="title" className="text-sm font-medium text-zinc-700">任务标题 *</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="例如：给客户发送报价单"
+                    className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="projects">关联项目 *（可多选）</Label>
-                  <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                  <Label htmlFor="projects" className="text-sm font-medium text-zinc-700">关联项目 *（可多选）</Label>
+                  <div className="mt-2 border border-zinc-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2">
                     {projects.map((project: any) => (
                       <div key={project.id} className="flex items-center justify-between space-x-2">
                         <div className="flex items-center space-x-2 flex-1">
@@ -293,32 +304,33 @@ export default function TasksPage() {
                               }
                             }}
                           />
-                          <Label htmlFor={`project-${project.id}`} className="text-sm cursor-pointer flex-1">
+                          <Label htmlFor={`project-${project.id}`} className="text-sm cursor-pointer flex-1 text-zinc-700">
                             {project.name}
                           </Label>
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-zinc-400">
                           {project.customers?.name}
                         </span>
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">已选择 {selectedProjectIds.length} 个项目</p>
+                  <p className="text-xs text-zinc-500 mt-1.5">已选择 {selectedProjectIds.length} 个项目</p>
                 </div>
                 <div>
-                  <Label htmlFor="description">任务描述</Label>
+                  <Label htmlFor="description" className="text-sm font-medium text-zinc-700">任务描述</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="任务的详细信息..."
+                    className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 resize-none"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="priority">优先级</Label>
+                    <Label htmlFor="priority" className="text-sm font-medium text-zinc-700">优先级</Label>
                     <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -330,19 +342,20 @@ export default function TasksPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="due_date">截止日期</Label>
+                    <Label htmlFor="due_date" className="text-sm font-medium text-zinc-700">截止日期</Label>
                     <Input
                       id="due_date"
                       type="datetime-local"
                       value={formData.due_date}
                       onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                      className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                     />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="status">任务状态</Label>
+                  <Label htmlFor="status" className="text-sm font-medium text-zinc-700">任务状态</Label>
                   <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -353,11 +366,11 @@ export default function TasksPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-zinc-200 text-zinc-700 hover:bg-zinc-50">
                     取消
                   </Button>
-                  <Button type="submit">{editingId ? '保存' : '创建'}</Button>
+                  <Button type="submit" className="bg-zinc-900 text-white hover:bg-zinc-800">{editingId ? '保存' : '创建'}</Button>
                 </div>
               </form>
             </DialogContent>
@@ -365,16 +378,16 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* 表头 */}
-      <Card>
+      {/* 表格 */}
+      <Card className="rounded-2xl shadow-sm border-0 bg-white">
         <CardContent className="p-0">
           {filteredTasks.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">
+            <div className="text-center py-16">
+              <p className="text-zinc-400 mb-4">
                 {projects.length === 0 ? '请先创建项目' : '还没有任务'}
               </p>
               {projects.length > 0 && (
-                <Button onClick={() => setDialogOpen(true)} size="sm">
+                <Button onClick={() => setDialogOpen(true)} size="sm" className="bg-zinc-900 text-white hover:bg-zinc-800">
                   <Plus className="w-4 h-4 mr-2" />
                   创建第一个任务
                 </Button>
@@ -383,32 +396,32 @@ export default function TasksPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-zinc-50 border-b border-zinc-200 rounded-t-2xl">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-10">状态</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-64">任务标题</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">项目</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">优先级</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-36">截止日期</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32 whitespace-nowrap">任务状态</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24 whitespace-nowrap">操作</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-10 rounded-tl-2xl">状态</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-64">任务标题</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-48">项目</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-20">优先级</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-36">截止日期</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-32 whitespace-nowrap">任务状态</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-24 whitespace-nowrap rounded-tr-2xl">操作</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-zinc-100">
                   {filteredTasks.map((task: any) => (
                     <tr
                       key={task.id}
-                      className={`hover:bg-gray-50 transition-colors ${
-                        task.status === 'completed' ? 'opacity-50 bg-gray-50' : ''
-                      } ${isOverdue(task) ? 'bg-red-50' : ''}`}
+                      className={`hover:bg-zinc-50 transition-colors ${
+                        task.status === 'completed' ? 'opacity-40 bg-zinc-50' : ''
+                      } ${isOverdue(task) ? 'bg-red-50/50' : ''}`}
                     >
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleComplete(task)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
                             task.status === 'completed'
-                              ? 'bg-green-500 border-green-500 text-white'
-                              : 'border-gray-300 hover:border-green-500'
+                              ? 'bg-zinc-900 border-zinc-900 text-white'
+                              : 'border-zinc-300 hover:border-zinc-900'
                           }`}
                         >
                           {task.status === 'completed' && <Check className="w-3 h-3" />}
@@ -416,18 +429,18 @@ export default function TasksPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <div className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                          <div className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-zinc-400' : 'text-zinc-900'}`}>
                             {task.title}
                           </div>
                           {task.description && (
-                            <div className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">
+                            <div className="text-xs text-zinc-500 mt-0.5 truncate max-w-xs">
                               {task.description}
                             </div>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-sm text-gray-600 whitespace-nowrap">
+                        <div className="text-sm text-zinc-600 whitespace-nowrap">
                           {task.projects?.name}
                         </div>
                       </td>
@@ -438,7 +451,7 @@ export default function TasksPage() {
                       </td>
                       <td className="px-4 py-3">
                         {task.due_date ? (
-                          <div className={`text-xs whitespace-nowrap ${isOverdue(task) ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                          <div className={`text-xs whitespace-nowrap ${isOverdue(task) ? 'text-rose-600 font-medium' : 'text-zinc-600'}`}>
                             {new Date(task.due_date).toLocaleDateString('zh-CN', {
                               month: '2-digit',
                               day: '2-digit',
@@ -448,15 +461,15 @@ export default function TasksPage() {
                             {isOverdue(task) && <span className="ml-1">(已过期)</span>}
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-400">-</span>
+                          <span className="text-xs text-zinc-400">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`text-xs ${
-                          task.status === 'completed' ? 'text-green-600' :
-                          task.status === 'in_progress' ? 'text-blue-600' :
-                          task.status === 'cancelled' ? 'text-gray-500' :
-                          'text-gray-600'
+                          task.status === 'completed' ? 'text-zinc-900' :
+                          task.status === 'in_progress' ? 'text-zinc-700' :
+                          task.status === 'cancelled' ? 'text-zinc-400' :
+                          'text-zinc-600'
                         }`}>
                           {getStatusText(task.status)}
                         </span>
@@ -467,17 +480,17 @@ export default function TasksPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(task)}
-                            className="h-8 w-8"
+                            className="h-8 w-8 hover:bg-zinc-100 text-zinc-600"
                           >
-                            <Pencil className="w-4 h-4 text-blue-500" />
+                            <Pencil className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(task.id)}
-                            className="h-8 w-8"
+                            className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
                           >
-                            <Trash2 className="w-4 h-4 text-red-500" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </td>

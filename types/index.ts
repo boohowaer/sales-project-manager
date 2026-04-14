@@ -144,6 +144,7 @@ export type Database = {
           theme: 'light' | 'dark' | 'system'
           reminder_enabled: boolean
           reminder_advance_hours: number
+          sales_goal: number | null
           created_at: string
           updated_at: string
         }
@@ -155,6 +156,7 @@ export type Database = {
           theme?: 'light' | 'dark' | 'system'
           reminder_enabled?: boolean
           reminder_advance_hours?: number
+          sales_goal?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -166,6 +168,7 @@ export type Database = {
           theme?: 'light' | 'dark' | 'system'
           reminder_enabled?: boolean
           reminder_advance_hours?: number
+          sales_goal?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -229,15 +232,18 @@ export type Project = Database['public']['Tables']['projects']['Row']
 export type Task = Database['public']['Tables']['tasks']['Row']
 export type UserSettings = Database['public']['Tables']['user_settings']['Row']
 export type SettlementStage = Database['public']['Tables']['settlement_stages']['Row']
+export type WeeklyUpdate = Database['public']['Tables']['weekly_updates']['Row']
 
 export type CustomerInsert = Database['public']['Tables']['customers']['Insert']
 export type ProjectInsert = Database['public']['Tables']['projects']['Insert']
 export type TaskInsert = Database['public']['Tables']['tasks']['Insert']
 export type UserSettingsInsert = Database['public']['Tables']['user_settings']['Insert']
 export type SettlementStageInsert = Database['public']['Tables']['settlement_stages']['Insert']
+export type WeeklyUpdateInsert = Database['public']['Tables']['weekly_updates']['Insert']
 
 export type CustomerUpdate = Database['public']['Tables']['customers']['Update']
 export type ProjectUpdate = Database['public']['Tables']['projects']['Update']
 export type TaskUpdate = Database['public']['Tables']['tasks']['Update']
 export type UserSettingsUpdate = Database['public']['Tables']['user_settings']['Update']
 export type SettlementStageUpdate = Database['public']['Tables']['settlement_stages']['Update']
+export type WeeklyUpdateUpdate = Database['public']['Tables']['weekly_updates']['Update']

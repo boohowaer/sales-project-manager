@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Users, FolderKanban, CheckSquare, Settings, LogOut } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { signOut } from '@/lib/supabase/auth'
+import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
 
 export default async function DashboardLayout({
   children,
@@ -18,48 +18,36 @@ export default async function DashboardLayout({
   }
 
   const navigation = [
-    { name: '仪表板', href: '/dashboard', icon: LayoutDashboard },
-    { name: '客户', href: '/dashboard/customers', icon: Users },
-    { name: '项目', href: '/dashboard/projects', icon: FolderKanban },
-    { name: '任务', href: '/dashboard/tasks', icon: CheckSquare },
-    { name: '设置', href: '/dashboard/settings', icon: Settings },
+    { name: '仪表板', href: '/dashboard', iconName: 'LayoutDashboard' },
+    { name: '客户', href: '/dashboard/customers', iconName: 'Users' },
+    { name: '项目', href: '/dashboard/projects', iconName: 'FolderKanban' },
+    { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
+    { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
+    { name: '设置', href: '/dashboard/settings', iconName: 'Settings' },
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f0f0f0]">
       {/* 侧边栏 */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200">
+      <aside className="fixed inset-y-0 left-0 z-50 w-64 shadow-lg" style={{ backgroundColor: '#090702' }}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-900">销售项目管理</h1>
+          <div className="flex flex-col justify-center h-20 px-6 border-b pt-4" style={{ borderColor: '#1a1a1a' }}>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#ffffff', fontFamily: 'var(--font-poppins), sans-serif' }}>Sales to Do</h1>
+            <p className="text-xs" style={{ color: '#999999' }}>销售个人任务管理工具</p>
           </div>
 
           {/* 导航 */}
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 group"
-                >
-                  <Icon className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-500" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
+          <SidebarNavigation navigation={navigation} />
 
           {/* 用户信息 */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t" style={{ borderColor: '#1a1a1a' }}>
             <div className="flex items-center mb-4">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+              <div className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-white font-medium text-sm shadow-md">
                 {user.email?.[0].toUpperCase()}
               </div>
               <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-white truncate">
                   {user.email}
                 </p>
               </div>
@@ -69,7 +57,11 @@ export default async function DashboardLayout({
               await signOut()
               redirect('/login')
             }}>
-              <Button type="submit" variant="outline" className="w-full" size="sm">
+              <Button
+                type="submit"
+                className="w-full bg-white/10 text-white hover:bg-white/20 hover:text-white border-0"
+                size="sm"
+              >
                 <LogOut className="w-4 h-4 mr-2" />
                 退出登录
               </Button>

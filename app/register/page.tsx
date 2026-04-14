@@ -117,7 +117,7 @@ export default function RegisterPage() {
             </Button>
             <div className="text-sm text-center text-gray-600">
               已有账户？{' '}
-              <Link href="/login" className="text-blue-600 hover:underline font-medium">
+              <Link href="/login" className="text-sky-600 hover:underline font-medium">
                 登录
               </Link>
             </div>

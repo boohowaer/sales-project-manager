@@ -416,7 +416,7 @@ export async function getDashboardStats(supabase?: any) {
   // 获取所有项目以计算统计数据
   const { data: allProjects, error: projectsError } = await client
     .from('projects')
-    .select('status, value, probability')
+    .select('id, status, value, probability, has_start_notice, contract_signed')
 
   console.log('仪表盘统计 - 项目数据:', allProjects)
   console.log('仪表盘统计 - 项目错误:', projectsError)
@@ -436,6 +436,82 @@ export async function getDashboardStats(supabase?: any) {
   console.log('仪表盘统计 - 总项目数:', totalProjects)
   console.log('仪表盘统计 - 活跃项目:', activeProjects)
   console.log('仪表盘统计 - 总价值:', totalValue)
+
+  // 计算已签约项目金额
+  const signedWithStart = allProjects?.filter(p => p.has_start_notice || p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0) || 0
+  const signedWithContract = allProjects?.filter(p => p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0) || 0
+
+  // 获取所有结算阶段数据
+  const projectIds = allProjects?.map(p => p.id) || []
+  const { data: allSettlements, error: settlementsError } = await client
+    .from('settlement_stages')
+    .select('project_id, amount, accepted, invoiced, paid')
+    .in('project_id', projectIds)
+
+  if (settlementsError) {
+    console.error('获取结算段数据失败:', settlementsError)
+  }
+
+  // 计算已验收、已开票、已回款金额（基于结算阶段）
+  let acceptedAmount = 0
+  let invoicedAmount = 0
+  let paidAmount = 0
+
+  if (allSettlements) {
+    // 对每个项目，找出已验收/已开票/已回款的结算段
+    const projectSettlements = new Map<string, typeof allSettlements>()
+    allSettlements.forEach(s => {
+      if (!projectSettlements.has(s.project_id)) {
+        projectSettlements.set(s.project_id, [])
+      }
+      projectSettlements.get(s.project_id)!.push(s)
+    })
+
+    // 计算每个项目的金额（只计算有 amount 的结算段）
+    projectSettlements.forEach((settlements, projectId) => {
+      const project = allProjects?.find(p => p.id === projectId)
+
+      // 如果项目没有总金额，则使用结算段金额
+      if (!project || !project.value) {
+        // 使用结算段的金额
+        settlements.forEach(s => {
+          if (s.accepted) acceptedAmount += (s.amount || 0)
+          if (s.invoiced) invoicedAmount += (s.amount || 0)
+          if (s.paid) paidAmount += (s.amount || 0)
+        })
+      } else {
+        // 项目有总金额，按比例计算
+        const totalStages = settlements.length
+        const totalStageAmount = settlements.reduce((sum, s) => sum + (s.amount || 0), 0)
+
+        if (totalStageAmount > 0) {
+          // 使用结算段金额占比
+          const acceptedStages = settlements.filter(s => s.accepted)
+          const invoicedStages = settlements.filter(s => s.invoiced)
+          const paidStages = settlements.filter(s => s.paid)
+
+          const acceptedStageAmount = acceptedStages.reduce((sum, s) => sum + (s.amount || 0), 0)
+          const invoicedStageAmount = invoicedStages.reduce((sum, s) => sum + (s.amount || 0), 0)
+          const paidStageAmount = paidStages.reduce((sum, s) => sum + (s.amount || 0), 0)
+
+          acceptedAmount += (acceptedStageAmount / totalStageAmount) * project.value
+          invoicedAmount += (invoicedStageAmount / totalStageAmount) * project.value
+          paidAmount += (paidStageAmount / totalStageAmount) * project.value
+        } else {
+          // 结算段没有金额，平均分配
+          const acceptedStages = settlements.filter(s => s.accepted).length
+          const invoicedStages = settlements.filter(s => s.invoiced).length
+          const paidStages = settlements.filter(s => s.paid).length
+
+          if (totalStages > 0) {
+            acceptedAmount += (acceptedStages / totalStages) * project.value
+            invoicedAmount += (invoicedStages / totalStages) * project.value
+            paidAmount += (paidStages / totalStages) * project.value
+          }
+        }
+      }
+    })
+  }
 
   // 获取所有任务（不计日期）
   const { data: allTasks, error: allTasksError } = await client
@@ -488,6 +564,11 @@ export async function getDashboardStats(supabase?: any) {
     activeProjects,
     totalValue,
     expectedValue,
+    signedWithStart,
+    signedWithContract,
+    acceptedAmount,
+    invoicedAmount,
+    paidAmount,
     todayTasks,
     weekTasks
   }
@@ -539,6 +620,73 @@ export async function deleteSettlementStage(id: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('settlement_stages')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+// 每周进展相关查询
+export async function getWeeklyUpdates(): Promise<any[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('weekly_updates')
+    .select('*, projects(*, customers(*))')
+    .order('week', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function getProjectWeeklyUpdates(projectId: string): Promise<any[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('weekly_updates')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('week', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function createWeeklyUpdate(update: WeeklyUpdateInsert): Promise<any> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('User not authenticated')
+
+  const { data, error } = await supabase
+    .from('weekly_updates')
+    .insert(update as any)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateWeeklyUpdate(id: string, update: WeeklyUpdateUpdate): Promise<any> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('weekly_updates')
+    .update(update as any)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteWeeklyUpdate(id: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('weekly_updates')
     .delete()
     .eq('id', id)
 

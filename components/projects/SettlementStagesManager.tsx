@@ -164,7 +164,7 @@ export function SettlementStagesManager({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">结算阶段管理</h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-zinc-600">
             共 {stages} 段 · 已完成 {getProgressPercentage()}%
           </p>
         </div>
@@ -173,19 +173,19 @@ export function SettlementStagesManager({
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button size="sm" disabled={stageList.length >= stages}>
+            <Button size="sm" disabled={stageList.length >= stages} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
               <Plus className="w-4 h-4 mr-1" />
               添加结算段
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="rounded-2xl shadow-xl border-0">
             <DialogHeader>
-              <DialogTitle>{editingId ? '编辑结算段' : '添加结算段'}</DialogTitle>
+              <DialogTitle className="text-lg font-semibold">{editingId ? '编辑结算段' : '添加结算段'}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="stage_number">段号</Label>
+                  <Label htmlFor="stage_number" className="text-sm font-medium text-zinc-700">段号</Label>
                   <Input
                     id="stage_number"
                     type="number"
@@ -193,27 +193,30 @@ export function SettlementStagesManager({
                     onChange={(e) => setFormData({ ...formData, stage_number: parseInt(e.target.value) })}
                     min={1}
                     max={stages}
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="amount">金额（元）</Label>
+                  <Label htmlFor="amount" className="text-sm font-medium text-zinc-700">金额（元）</Label>
                   <Input
                     id="amount"
                     type="number"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                     placeholder="100000"
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="stage_name">阶段名称</Label>
+                <Label htmlFor="stage_name" className="text-sm font-medium text-zinc-700">阶段名称</Label>
                 <Input
                   id="stage_name"
                   value={formData.stage_name}
                   onChange={(e) => setFormData({ ...formData, stage_name: e.target.value })}
                   placeholder="例如：首付款、进度款、尾款"
+                  className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
 
@@ -232,6 +235,7 @@ export function SettlementStagesManager({
                     value={formData.accepted_date}
                     onChange={(e) => setFormData({ ...formData, accepted_date: e.target.value })}
                     placeholder="验收日期"
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 )}
               </div>
@@ -251,6 +255,7 @@ export function SettlementStagesManager({
                     value={formData.invoiced_date}
                     onChange={(e) => setFormData({ ...formData, invoiced_date: e.target.value })}
                     placeholder="开票日期"
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 )}
               </div>
@@ -270,26 +275,28 @@ export function SettlementStagesManager({
                     value={formData.paid_date}
                     onChange={(e) => setFormData({ ...formData, paid_date: e.target.value })}
                     placeholder="回款日期"
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 )}
               </div>
 
               <div>
-                <Label htmlFor="notes">备注</Label>
+                <Label htmlFor="notes" className="text-sm font-medium text-zinc-700">备注</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="其他信息..."
                   rows={3}
+                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
 
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-zinc-200 text-zinc-700 hover:bg-zinc-50">
                   取消
                 </Button>
-                <Button onClick={handleSave}>
+                <Button onClick={handleSave} className="bg-zinc-900 text-white hover:bg-zinc-800">
                   {editingId ? '保存' : '添加'}
                 </Button>
               </div>
@@ -299,8 +306,8 @@ export function SettlementStagesManager({
       </div>
 
       {stageList.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-8 text-gray-500">
+        <Card className="rounded-2xl shadow-sm border-0 bg-white">
+          <CardContent className="text-center py-8 text-zinc-500">
             <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>还没有创建结算段</p>
             <p className="text-sm">点击"添加结算段"开始管理项目结算</p>
@@ -311,20 +318,20 @@ export function SettlementStagesManager({
           {stageList
             .sort((a, b) => a.stage_number - b.stage_number)
             .map((stage) => (
-              <Card key={stage.id} className={stage.paid ? 'border-green-500' : ''}>
+              <Card key={stage.id} className={stage.paid ? 'rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white border-l-4 border-l-emerald-500' : 'rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white'}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-semibold">
+                        <div className="flex items-center justify-center w-8 h-8 bg-sky-100 text-sky-600 rounded-full font-semibold">
                           {stage.stage_number}
                         </div>
                         <div>
-                          <h4 className="font-semibold">
+                          <h4 className="font-semibold text-zinc-900">
                             {stage.stage_name || `第${stage.stage_number}段`}
                           </h4>
                           {stage.amount && (
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-zinc-600">
                               ¥{stage.amount.toLocaleString()}
                             </p>
                           )}
@@ -333,17 +340,17 @@ export function SettlementStagesManager({
                       <div className="flex flex-wrap gap-2 mt-3">
                         {getStatusBadge(stage.accepted, stage.invoiced, stage.paid)}
                         {stage.accepted_date && (
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-zinc-600">
                             验收：{new Date(stage.accepted_date).toLocaleDateString('zh-CN')}
                           </span>
                         )}
                         {stage.invoiced_date && (
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-zinc-600">
                             开票：{new Date(stage.invoiced_date).toLocaleDateString('zh-CN')}
                           </span>
                         )}
                         {stage.paid_date && (
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-zinc-600">
                             回款：{new Date(stage.paid_date).toLocaleDateString('zh-CN')}
                           </span>
                         )}
@@ -354,6 +361,7 @@ export function SettlementStagesManager({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(stage)}
+                        className="h-8 w-8 hover:bg-zinc-100 text-zinc-600"
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -361,8 +369,9 @@ export function SettlementStagesManager({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(stage.id)}
+                        className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        <Trash2 className="w-4 h-4 text-rose-500" />
                       </Button>
                     </div>
                   </div>

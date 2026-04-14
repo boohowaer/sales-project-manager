@@ -12,10 +12,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Coins } from 'lucide-react'
+import { Plus, Pencil, Trash2, Coins, Search } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Project, Customer } from '@/types'
+
+// 辅助函数：获取验收/开票/回款状态Badge
+const getStatusBadge = (type: 'accepted' | 'invoiced' | 'paid', count: number, total: number) => {
+  const labels: Record<string, string> = {
+    accepted: '验收',
+    invoiced: '开票',
+    paid: '回款'
+  }
+
+  if (total === 0) return <Badge variant="secondary" className="text-xs">{labels[type]}: 未</Badge>
+  if (count === 0) return <Badge variant="secondary" className="text-xs">{labels[type]}: 未</Badge>
+  if (count === total) return <Badge variant="default" className="text-xs">{labels[type]}: 完成</Badge>
+  return <Badge variant="secondary" className="text-xs">{labels[type]}: {count}/{total}</Badge>
+}
 
 export default function ProjectsPage() {
   // 辅助函数：生成验收/开票/回款状态文本
@@ -28,9 +42,9 @@ export default function ProjectsPage() {
 
   // 获取状态标签的颜色
   const getStatusColor = (type: 'accepted' | 'invoiced' | 'paid', count: number, total: number) => {
-    if (count === 0) return 'bg-gray-100 text-gray-700'
-    if (count === total) return 'bg-green-100 text-green-700'
-    return 'bg-yellow-100 text-yellow-700'
+    if (count === 0) return 'bg-zinc-100 text-zinc-700'
+    if (count === total) return 'bg-emerald-100 text-emerald-700'
+    return 'bg-amber-100 text-amber-700'
   }
 
   const router = useRouter()
@@ -60,6 +74,13 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     loadData()
+
+    // 检查是否需要自动打开项目创建对话框
+    const shouldOpenDialog = sessionStorage.getItem('openProjectDialog')
+    if (shouldOpenDialog === 'true') {
+      setDialogOpen(true)
+      sessionStorage.removeItem('openProjectDialog')
+    }
   }, [])
 
   const loadData = async () => {
@@ -288,7 +309,7 @@ export default function ProjectsPage() {
     return (
       <div className="p-8">
         <div className="text-center py-12">
-          <div className="text-gray-500">加载中...</div>
+          <div className="text-zinc-400">加载中...</div>
         </div>
       </div>
     )
@@ -299,41 +320,45 @@ export default function ProjectsPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">项目管理</h1>
-          <p className="mt-2 text-gray-600">管理您的所有销售项目</p>
+          <h1 className="text-3xl font-semibold text-zinc-900">项目管理</h1>
+          <p className="mt-2 text-zinc-500">管理您的所有销售项目</p>
         </div>
         <div className="flex gap-2">
-          <Input
-            placeholder="搜索项目或客户..."
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            className="w-48"
-          />
+          <div className="flex items-center gap-2">
+            <Search className="w-4 h-4 text-zinc-400" />
+            <Input
+              placeholder="搜索项目或客户..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-48 h-9 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+            />
+          </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button disabled={customers.length === 0}>
+              <Button disabled={customers.length === 0} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
                 <Plus className="w-4 h-4 mr-2" />
                 添加项目
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border-0">
             <DialogHeader>
-              <DialogTitle>{editingId ? "编辑项目" : "添加新项目"}</DialogTitle>
+              <DialogTitle className="text-lg font-semibold">{editingId ? "编辑项目" : "添加新项目"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <Label htmlFor="name">项目名称 *</Label>
+                <Label htmlFor="name" className="text-sm font-medium text-zinc-700">项目名称 *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="例如：网站开发项目"
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
               <div>
-                <Label htmlFor="customer_id">客户 *</Label>
+                <Label htmlFor="customer_id" className="text-sm font-medium text-zinc-700">客户 *</Label>
                 <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                     <SelectValue placeholder="选择客户" />
                   </SelectTrigger>
                   <SelectContent>
@@ -346,17 +371,18 @@ export default function ProjectsPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="description">项目描述</Label>
+                <Label htmlFor="description" className="text-sm font-medium text-zinc-700">项目描述</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="项目的详细信息..."
+                      className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>
 
               {/* 项目状态管理 */}
-              <div className="border-t pt-4 mt-4">
+              <div className="mt-6">
                 <h4 className="text-sm font-semibold mb-4">项目状态</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
@@ -365,7 +391,7 @@ export default function ProjectsPage() {
                       id="has_start_notice"
                       checked={formData.has_start_notice}
                       onChange={(e) => setFormData({ ...formData, has_start_notice: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-300"
+                      className="w-4 h-4 rounded border-zinc-300"
                     />
                     <Label htmlFor="has_start_notice" className="text-sm">有开工函</Label>
                   </div>
@@ -375,13 +401,13 @@ export default function ProjectsPage() {
                       id="contract_signed"
                       checked={formData.contract_signed}
                       onChange={(e) => setFormData({ ...formData, contract_signed: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-300"
+                      className="w-4 h-4 rounded border-zinc-300"
                     />
                     <Label htmlFor="contract_signed" className="text-sm">已签署合同</Label>
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Label htmlFor="settlement_stages">结算段数</Label>
+                  <Label htmlFor="settlement_stages" className="text-sm font-medium text-zinc-700">结算段数</Label>
                   <Input
                     id="settlement_stages"
                     type="number"
@@ -390,17 +416,17 @@ export default function ProjectsPage() {
                     value={formData.settlement_stages}
                     onChange={(e) => setFormData({ ...formData, settlement_stages: parseInt(e.target.value) || 1 })}
                     placeholder="1"
-                    className="w-32"
+                    className="mt-2 w-32 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
-                  <p className="text-xs text-gray-600 mt-1">设置项目分几段结算（最多10段）</p>
+                  <p className="text-xs text-zinc-500 mt-1">设置项目分几段结算（最多10段）</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="status">状态</Label>
+                  <Label htmlFor="status" className="text-sm font-medium text-zinc-700">状态</Label>
                   <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -412,18 +438,19 @@ export default function ProjectsPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="value">项目价值（元）</Label>
+                  <Label htmlFor="value" className="text-sm font-medium text-zinc-700">项目价值（元）</Label>
                   <Input
                     id="value"
                     type="number"
                     value={formData.value}
                     onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                     placeholder="100000"
+                      className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="probability">成功概率：{formData.probability}%</Label>
+                <Label htmlFor="probability" className="text-sm font-medium text-zinc-700">成功概率：{formData.probability}%</Label>
                 <Input
                   id="probability"
                   type="range"
@@ -436,26 +463,28 @@ export default function ProjectsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="start_date">开始日期</Label>
+                  <Label htmlFor="start_date" className="text-sm font-medium text-zinc-700">开始日期</Label>
                   <Input
                     id="start_date"
                     type="date"
                     value={formData.start_date}
                     onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="expected_close_date">预期成交日期</Label>
+                  <Label htmlFor="expected_close_date" className="text-sm font-medium text-zinc-700">预期成交日期</Label>
                   <Input
                     id="expected_close_date"
                     type="date"
                     value={formData.expected_close_date}
                     onChange={(e) => setFormData({ ...formData, expected_close_date: e.target.value })}
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                <Button type="button" onClick={() => setDialogOpen(false)} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">
                   取消
                 </Button>
                 <Button type="submit">{editingId ? '保存' : '创建'}</Button>
@@ -468,9 +497,9 @@ export default function ProjectsPage() {
 
       {/* 项目列表 */}
       {projects.length === 0 ? (
-        <Card>
+        <Card className="rounded-2xl shadow-sm border-0 bg-white">
           <CardContent className="text-center py-12">
-            <p className="text-gray-500 mb-4">
+            <p className="text-zinc-400 mb-4">
               {customers.length === 0 ? '请先添加客户' : '还没有项目'}
             </p>
             {customers.length > 0 && (
@@ -482,9 +511,9 @@ export default function ProjectsPage() {
           </CardContent>
         </Card>
       ) : filteredProjects.length === 0 ? (
-        <Card>
+        <Card className="rounded-2xl shadow-sm border-0 bg-white">
           <CardContent className="text-center py-12">
-            <p className="text-gray-500">没有找到匹配的项目</p>
+            <p className="text-zinc-400">没有找到匹配的项目</p>
             <Button onClick={() => setSearchKeyword('')} variant="outline" className="mt-4">
               清除搜索
             </Button>
@@ -493,19 +522,17 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {filteredProjects.map((project) => (
-            <Card key={project.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card key={project.id} className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white">
+              <CardHeader className="pb-0">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 mb-0">
+                      <span className="text-sm text-zinc-400">{project.customers?.name}</span>
                       <h3 className="font-semibold text-lg">{project.name}</h3>
                       <Badge variant={getStatusColor2(project.status) as any}>
                         {getStatusText2(project.status)}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      客户：{project.customers?.name}
-                    </p>
                   </div>
                   <div className="flex space-x-1">
                     <Button
@@ -520,65 +547,52 @@ export default function ProjectsPage() {
                       size="icon"
                       onClick={() => handleManageSettlements(project)}
                     >
-                      <Coins className="w-4 h-4 text-yellow-600" />
+                      <Coins className="w-4 h-4 text-amber-600" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(project.id)}
                     >
-                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <Trash2 className="w-4 h-4 text-rose-500" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                {project.description && (
-                  <p className="text-sm text-gray-600 mb-4">{project.description}</p>
-                )}
-                <div className="flex flex-wrap gap-2 mb-4">
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2 mb-4 -mt-2">
                   {project.has_start_notice && (
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">✓ 有开工函</span>
+                    <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">✓ 有开工函</span>
                   )}
                   {project.contract_signed && (
-                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">✓ 已签合同</span>
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ 已签合同</span>
                   )}
                   {/* 显示结算段信息 */}
-                  <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                  <span className="px-2 py-1 bg-zinc-100 text-zinc-700 text-xs rounded-full">
                     {project.settlement_stages}段结算
                   </span>
                   {/* 验收、开票、回款状态 */}
-                  {(() => {
-                    const summary = project.settlement_summary || { total: 0, accepted: 0, invoiced: 0, paid: 0 }
-                    return (
-                      <>
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor('accepted', summary.accepted, summary.total)}`}>
-                          {getStatusText('accepted', summary.accepted, summary.total)}
-                        </span>
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor('invoiced', summary.invoiced, summary.total)}`}>
-                          {getStatusText('invoiced', summary.invoiced, summary.total)}
-                        </span>
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor('paid', summary.paid, summary.total)}`}>
-                          {getStatusText('paid', summary.paid, summary.total)}
-                        </span>
-                      </>
-                    )
-                  })()}
+                  {getStatusBadge('accepted', project.settlement_summary?.accepted || 0, project.settlement_summary?.total || 0)}
+                  {getStatusBadge('invoiced', project.settlement_summary?.invoiced || 0, project.settlement_summary?.total || 0)}
+                  {getStatusBadge('paid', project.settlement_summary?.paid || 0, project.settlement_summary?.total || 0)}
                 </div>
+                {project.description && (
+                  <p className="text-sm text-zinc-500 mb-4">{project.description}</p>
+                )}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   {project.value && (
                     <div>
-                      <p className="text-gray-600">项目价值</p>
+                      <p className="text-zinc-500">项目价值</p>
                       <p className="font-semibold">¥{project.value.toLocaleString()}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-gray-600">成功概率</p>
+                    <p className="text-zinc-500">成功概率</p>
                     <p className="font-semibold">{project.probability}%</p>
                   </div>
                   {project.start_date && (
                     <div>
-                      <p className="text-gray-600">开始日期</p>
+                      <p className="text-zinc-500">开始日期</p>
                       <p className="font-semibold">
                         {new Date(project.start_date).toLocaleDateString('zh-CN')}
                       </p>
@@ -586,7 +600,7 @@ export default function ProjectsPage() {
                   )}
                   {project.expected_close_date && (
                     <div>
-                      <p className="text-gray-600">预期成交</p>
+                      <p className="text-zinc-500">预期成交</p>
                       <p className="font-semibold">
                         {new Date(project.expected_close_date).toLocaleDateString('zh-CN')}
                       </p>
@@ -607,9 +621,9 @@ export default function ProjectsPage() {
           setSelectedProjectStages(1)
         }
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border-0">
           <DialogHeader>
-            <DialogTitle>结算阶段管理</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">结算阶段管理</DialogTitle>
           </DialogHeader>
           {selectedProjectId && (
             <SettlementStagesManager

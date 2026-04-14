@@ -79,7 +79,7 @@ export default function LoginPage() {
             </Button>
             <div className="text-sm text-center text-gray-600">
               还没有账户？{' '}
-              <Link href="/register" className="text-blue-600 hover:underline font-medium">
+              <Link href="/register" className="text-sky-600 hover:underline font-medium">
                 注册
               </Link>
             </div>

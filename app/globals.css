@@ -1,8 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 黑白灰配色方案 */
+  --background: #f0f0f0;
+  --foreground: #090702; /* 主文字颜色 */
+  --muted: #a1a1aa;
+  --muted-foreground: #71717a;
+  --card: #ffffff;
+  --card-foreground: #090702;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --primary: #090702; /* 主色调 */
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #090702;
+  --accent: #f4f4f5;
+  --accent-foreground: #090702;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --ring: #090702;
+
+  /* 侧边栏专用色 */
+  --sidebar-bg: #090702;
+  --sidebar-foreground: #fafafa;
+  --sidebar-border: #1a1a1a;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #fafafa;
+
+  /* 阴影系统 - 柔和细腻 */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 @theme inline {
@@ -12,18 +42,52 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* 基础样式重置和优化 */
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-poppins), 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-html {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+/* 优化文字渲染 */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+/* 卡片基础样式 - 无边框，圆角，阴影 */
+.card-base {
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
+}
+
+.card-base:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* 按钮优化 */
+button {
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+/* 输入框优化 */
+input, textarea, select {
+  transition: all 0.15s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: var(--ring);
 }
