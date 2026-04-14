@@ -1,36 +1,155 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 销售项目管理工具
 
-## Getting Started
+一个现代化的在线销售项目管理和任务追踪工具，专为销售专业人士设计。
 
-First, run the development server:
+## 功能特性
+
+- **客户管理**：轻松管理客户信息和联系方式
+- **项目管理**：追踪销售项目的时间节点、状态和成功概率
+- **任务管理**：创建和管理待办任务，支持优先级和截止日期
+- **智能提醒**：应用内提醒即将到期的任务
+- **数据统计**：实时查看项目价值和预期收入
+- **个性化设置**：自定义字体、大小和主题
+- **云端存储**：数据安全存储在云端，可跨设备访问
+
+## 技术栈
+
+- **前端**：Next.js 14 + React 18 + TypeScript
+- **UI组件**：shadcn/ui + Tailwind CSS
+- **后端**：Supabase（PostgreSQL + 认证 + 实时订阅）
+- **部署**：Vercel
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+npm install
+```
+
+### 2. 配置Supabase
+
+请按照 [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) 文件中的详细说明配置Supabase项目。
+
+简要步骤：
+
+1. 在 [supabase.com](https://supabase.com) 创建新项目
+2. 在SQL编辑器中运行 `lib/supabase/migrations.sql` 中的SQL脚本
+3. 复制项目URL和anon密钥
+4. 创建 `.env.local` 文件：
+
+```bash
+cp .env.local.example .env.local
+```
+
+5. 编辑 `.env.local`，填入您的Supabase凭据：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=你的项目URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的anon密钥
+```
+
+### 3. 启动开发服务器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开 [http://localhost:3000](http://localhost:3000) 查看应用。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. 注册和登录
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 点击"注册账户"创建新账户
+- 使用邮箱和密码登录
+- 开始添加客户、项目和任务
 
-## Learn More
+## 部署到Vercel
 
-To learn more about Next.js, take a look at the following resources:
+### 自动部署
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. 将代码推送到GitHub仓库
+2. 访问 [vercel.com](https://vercel.com)
+3. 点击"New Project"
+4. 导入您的GitHub仓库
+5. 配置环境变量（在项目设置中）：
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+6. 点击"Deploy"
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Vercel会自动部署您的应用，并提供一个HTTPS URL。
 
-## Deploy on Vercel
+## 使用指南
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 客户管理
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. 点击左侧菜单的"客户"
+2. 点击"添加客户"按钮
+3. 填写客户信息（名称、公司、联系方式等）
+4. 点击"创建"保存
+
+### 项目管理
+
+1. 先确保已添加客户
+2. 点击"项目"，然后点击"添加项目"
+3. 填写项目信息：
+   - 项目名称
+   - 选择关联客户
+   - 设置项目状态（进行中、已成交、已丢失等）
+   - 设置项目价值和成功概率
+   - 设置开始日期和预期成交日期
+4. 点击"创建"保存
+
+### 任务管理
+
+1. 先确保已创建项目
+2. 点击"任务"，然后点击"添加任务"
+3. 填写任务信息：
+   - 任务标题
+   - 选择关联项目
+   - 设置优先级（低、中、高、紧急）
+   - 设置截止日期
+4. 点击"创建"保存
+5. 点击任务左侧的复选框标记为完成
+
+### 个性化设置
+
+1. 点击"设置"
+2. 自定义：
+   - 字体类型
+   - 字体大小
+   - 主题（浅色/深色）
+   - 提醒设置
+3. 点击"保存设置"
+
+## 免费额度
+
+Supabase免费计划足够个人使用：
+- 500MB数据库存储
+- 1GB文件存储
+- 50,000月活跃用户
+- 2GB带宽/月
+
+Vercel免费计划：
+- 100GB带宽/月
+- 无限部署
+- 自动HTTPS
+- 全球CDN
+
+## 常见问题
+
+### Q: 数据是否安全？
+A: 是的。所有数据都存储在Supabase的PostgreSQL数据库中，使用行级安全策略（RLS）确保每个用户只能访问自己的数据。
+
+### Q: 可以离线使用吗？
+A: 当前版本需要网络连接。
+
+### Q: 如何备份数据？
+A: Supabase会自动备份数据库。您也可以在Supabase控制台手动导出数据。
+
+## 支持
+
+如有问题或建议，请查看 [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) 了解配置详情。
+
+## 许可证
+
+MIT License
