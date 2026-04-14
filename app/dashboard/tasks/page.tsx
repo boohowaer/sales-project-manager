@@ -23,7 +23,6 @@ export default function TasksPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchKeyword, setSearchKeyword] = useState<string>('')
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([])
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -68,20 +67,31 @@ export default function TasksPage() {
       due_date: '',
       status: 'pending'
     })
-    setSelectedProjectIds([])
     setEditingId(null)
   }
 
   const handleEdit = (task: Task) => {
+    // 将 UTC 时间转换为本地时间格式用于输入框
+    let localDueDate = ''
+    if (task.due_date) {
+      const date = new Date(task.due_date)
+      // 获取本地时间的年月日时分
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      localDueDate = `${year}-${month}-${day}T${hours}:${minutes}`
+    }
+
     setFormData({
       title: task.title,
       description: task.description || '',
       project_id: task.project_id || '',
       priority: task.priority,
-      due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0, 16) : '',
+      due_date: localDueDate,
       status: task.status
     })
-    setSelectedProjectIds(task.project_id ? [task.project_id] : [])
     setEditingId(task.id)
     setDialogOpen(true)
   }
@@ -94,37 +104,30 @@ export default function TasksPage() {
       return
     }
 
-    if (selectedProjectIds.length === 0) {
-      toast.error('请至少选择一个项目')
+    if (!formData.project_id) {
+      toast.error('请选择项目')
       return
     }
 
     try {
-      // 使用第一个选中的项目作为主项目
-      const primaryProjectId = selectedProjectIds[0]
-
       if (editingId) {
-        const updatedTask = await updateTask(editingId, {
+        await updateTask(editingId, {
           title: formData.title,
           description: formData.description || null,
-          project_id: primaryProjectId,
+          project_id: formData.project_id,
           priority: formData.priority as any,
           due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
           status: formData.status as any
         })
         toast.success('任务更新成功')
 
-        // 直接更新本地状态
-        setTasks(prevTasks =>
-          prevTasks.map(t =>
-            t.id === editingId ? { ...t, ...updatedTask } : t
-          )
-        )
+        // 重新加载任务数据以获取完整的关联信息
+        await loadData()
       } else {
         const newTask = await createTask({
           title: formData.title,
           description: formData.description || null,
-          project_id: primaryProjectId,
+          project_id: formData.project_id,
           priority: formData.priority as any,
           due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
           status: formData.status as any
@@ -182,11 +185,11 @@ export default function TasksPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'destructive'
-      case 'high': return 'warning'
-      case 'medium': return 'default'
-      case 'low': return 'secondary'
-      default: return 'default'
+      case 'urgent': return 'bg-rose-100 text-rose-700 border-rose-200'
+      case 'high': return 'bg-orange-200 text-orange-800 border-orange-300'
+      case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200'
+      case 'low': return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+      default: return 'bg-zinc-100 text-zinc-700 border-zinc-200'
     }
   }
 
@@ -326,33 +329,17 @@ export default function TasksPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="projects" className="text-sm font-medium text-zinc-700">关联项目 *（可多选）</Label>
-                  <div className="mt-2 border border-zinc-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2">
-                    {projects.map((project: any) => (
-                      <div key={project.id} className="flex items-center justify-between space-x-2">
-                        <div className="flex items-center space-x-2 flex-1">
-                          <Checkbox
-                            id={`project-${project.id}`}
-                            checked={selectedProjectIds.includes(project.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedProjectIds([...selectedProjectIds, project.id])
-                              } else {
-                                setSelectedProjectIds(selectedProjectIds.filter(id => id !== project.id))
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`project-${project.id}`} className="text-sm cursor-pointer flex-1 text-zinc-700">
-                            {project.name}
-                          </Label>
-                        </div>
-                        <span className="text-xs text-zinc-400">
-                          {project.customers?.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-zinc-500 mt-1.5">已选择 {selectedProjectIds.length} 个项目</p>
+                  <Label htmlFor="project_id" className="text-sm font-medium text-zinc-700">关联项目 *</Label>
+                  <Select value={formData.project_id} onValueChange={(value) => setFormData({ ...formData, project_id: value })}>
+                    <SelectTrigger className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
+                      <SelectValue placeholder="选择项目" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project: any) => (
+                        <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="description" className="text-sm font-medium text-zinc-700">任务描述</Label>
@@ -438,7 +425,7 @@ export default function TasksPage() {
                   <tr>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-10 rounded-tl-2xl">状态</th>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-64">任务标题</th>
-                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-48">项目</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase" style={{ width: '260px' }}>项目</th>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-20">优先级</th>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-36">截止日期</th>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-32 whitespace-nowrap">任务状态</th>
@@ -478,12 +465,12 @@ export default function TasksPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-sm text-zinc-600 whitespace-nowrap">
+                        <div className="text-sm text-zinc-600 truncate max-w-[260px]">
                           {task.projects?.name}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={getPriorityColor(task.priority) as any} className="text-xs">
+                        <Badge className={`text-xs border ${getPriorityColor(task.priority)}`}>
                           {getPriorityText(task.priority)}
                         </Badge>
                       </td>

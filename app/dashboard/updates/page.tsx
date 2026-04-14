@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Pencil, Trash2, Clock, Search, CheckCircle, Edit3, Filter, X, RotateCcw, CheckSquare } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -253,11 +254,28 @@ export default function UpdatesPage() {
     }
   }
 
+  const handleOpenCreateTask = (projectId: string) => {
+    setTaskFormData({
+      title: '',
+      description: '',
+      project_id: projectId,
+      priority: 'medium',
+      due_date: '',
+      status: 'pending'
+    })
+    setTaskDialogOpen(true)
+  }
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!taskFormData.title || !taskFormData.project_id) {
-      toast.error('请填写任务标题和选择项目')
+    if (!taskFormData.title) {
+      toast.error('请填写任务标题')
+      return
+    }
+
+    if (!taskFormData.project_id) {
+      toast.error('请选择项目')
       return
     }
 
@@ -426,15 +444,6 @@ export default function UpdatesPage() {
               </Badge>
             )}
           </Button>
-
-          <Button
-            onClick={() => setTaskDialogOpen(true)}
-            disabled={projects.length === 0}
-            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full"
-          >
-            <CheckSquare className="w-4 h-4 mr-2" />
-            添加任务
-          </Button>
         </div>
       </div>
 
@@ -451,11 +460,10 @@ export default function UpdatesPage() {
             <table className="w-full">
               <thead className="bg-zinc-50 border-b border-zinc-200 rounded-t-2xl">
                 <tr>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[200px] rounded-tl-2xl">项目名称</th>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[100px]">项目价值</th>
+                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[260px] rounded-tl-2xl">项目名称</th>
                   <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[280px]">结算状态</th>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[200px]">最新进展</th>
-                  <th className="text-right py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[100px] rounded-tr-2xl">操作</th>
+                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[180px]">最新进展</th>
+                  <th className="text-left py-4 px-8 text-xs font-medium text-zinc-500 uppercase min-w-[100px] rounded-tr-2xl">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -464,14 +472,16 @@ export default function UpdatesPage() {
 
                     <td className="py-3 px-4">
                       <div className="flex flex-col items-start justify-start">
-                        {project.belong_year && (
-                          <span className="text-xs text-indigo-600 font-medium mb-1">{project.belong_year}年</span>
-                        )}
-                        <div className="font-medium text-sm whitespace-nowrap">{project.name}</div>
+                        <div className="flex items-center gap-2 mb-1">
+                          {project.belong_year && (
+                            <span className="text-xs text-indigo-600 font-medium">{project.belong_year}年</span>
+                          )}
+                          {project.value && (
+                            <span className="text-xs text-zinc-500">¥{project.value.toLocaleString()}</span>
+                          )}
+                        </div>
+                        <div className="font-medium text-sm truncate max-w-[260px]">{project.name}</div>
                       </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-zinc-500">
-                      {project.value ? `¥${project.value.toLocaleString()}` : '-'}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-wrap items-center">
@@ -536,6 +546,15 @@ export default function UpdatesPage() {
                           title="查看历史"
                         >
                           <Clock className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleOpenCreateTask(project.id)}
+                          title="创建任务"
+                        >
+                          <CheckSquare className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -868,7 +887,19 @@ export default function UpdatesPage() {
       </Dialog>
 
       {/* 任务创建对话框 */}
-      <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+      <Dialog open={taskDialogOpen} onOpenChange={(open) => {
+        setTaskDialogOpen(open)
+        if (!open) {
+          setTaskFormData({
+            title: '',
+            description: '',
+            project_id: '',
+            priority: 'medium',
+            due_date: '',
+            status: 'pending'
+          })
+        }
+      }}>
         <DialogContent className="max-w-2xl rounded-2xl shadow-xl border-0">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">添加新任务</DialogTitle>

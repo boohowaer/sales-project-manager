@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Plus, Pencil, Trash2, Coins, Search, Filter, X, CheckSquare, RotateCcw, Upload } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
@@ -445,11 +446,28 @@ export default function ProjectsPage() {
     return true
   })
 
+  const handleOpenCreateTask = (projectId: string) => {
+    setTaskFormData({
+      title: '',
+      description: '',
+      project_id: projectId,
+      priority: 'medium',
+      due_date: '',
+      status: 'pending'
+    })
+    setTaskDialogOpen(true)
+  }
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!taskFormData.title || !taskFormData.project_id) {
-      toast.error('请填写任务标题和选择项目')
+    if (!taskFormData.title) {
+      toast.error('请填写任务标题')
+      return
+    }
+
+    if (!taskFormData.project_id) {
+      toast.error('请选择项目')
       return
     }
 
@@ -539,15 +557,6 @@ export default function ProjectsPage() {
               </Button>
             </DialogTrigger>
           </Dialog>
-
-          <Button
-            onClick={() => setTaskDialogOpen(true)}
-            disabled={projects.length === 0}
-            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full"
-          >
-            <CheckSquare className="w-4 h-4 mr-2" />
-            添加任务
-          </Button>
         </div>
       </div>
 
@@ -930,6 +939,7 @@ export default function ProjectsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(project)}
+                      title="编辑项目"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -937,13 +947,23 @@ export default function ProjectsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleManageSettlements(project)}
+                      title="结算阶段"
                     >
                       <Coins className="w-4 h-4 text-amber-600" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => handleOpenCreateTask(project.id)}
+                      title="创建任务"
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleDelete(project.id)}
+                      title="删除项目"
                     >
                       <Trash2 className="w-4 h-4 text-rose-500" />
                     </Button>
@@ -1043,14 +1063,12 @@ export default function ProjectsPage() {
             <div>
               <Label htmlFor="task-project" className="text-sm font-medium text-zinc-700">关联项目 *</Label>
               <Select value={taskFormData.project_id} onValueChange={(value) => setTaskFormData({ ...taskFormData, project_id: value })}>
-                <SelectTrigger id="task-project" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
+                <SelectTrigger id="task-project" className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                   <SelectValue placeholder="选择项目" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
+                    <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
