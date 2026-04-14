@@ -38,18 +38,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">登录</CardTitle>
-          <CardDescription className="text-center">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#f0f0f0' }}>
+      <Card className="w-full max-w-md rounded-2xl shadow-xl border-0">
+        <CardHeader className="space-y-1 pb-6">
+          <CardTitle className="text-2xl font-bold text-center" style={{ color: '#090702' }}>登录</CardTitle>
+          <CardDescription className="text-center text-zinc-600">
             输入您的邮箱和密码来访问您的项目管理工具
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">邮箱</Label>
+          <CardContent className="space-y-6">
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium text-zinc-700">邮箱</Label>
               <Input
                 id="email"
                 type="email"
@@ -58,10 +58,11 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 required
+                className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">密码</Label>
+            <div>
+              <Label htmlFor="password" className="text-sm font-medium text-zinc-700">密码</Label>
               <Input
                 id="password"
                 type="password"
@@ -70,14 +71,15 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 required
+                className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+          <CardFooter className="flex flex-col space-y-4 pt-2">
+            <Button type="submit" className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-full" disabled={loading}>
               {loading ? '登录中...' : '登录'}
             </Button>
-            <div className="text-sm text-center text-gray-600">
+            <div className="text-sm text-center text-zinc-600">
               还没有账户？{' '}
               <Link href="/register" className="text-sky-600 hover:underline font-medium">
                 注册
