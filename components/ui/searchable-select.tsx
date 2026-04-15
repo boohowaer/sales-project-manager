@@ -75,8 +75,14 @@ export function SearchableSelect({
     }
   }, [])
 
+  // 清除搜索词
+  const handleClearSearch = () => {
+    setSearchTerm('')
+    inputRef.current?.focus()
+  }
+
   // 清除选择
-  const handleClear = () => {
+  const handleClearSelection = () => {
     onChange('')
     setSearchTerm('')
     inputRef.current?.focus()
@@ -98,22 +104,24 @@ export function SearchableSelect({
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={handleInputFocus}
             placeholder={placeholder}
-            className="mt-2 pr-8 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+            className="mt-2 pr-20 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
           />
           {searchTerm && (
             <button
               type="button"
-              onClick={handleClear}
-              className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+              onClick={handleClearSearch}
+              className="absolute right-10 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 px-1"
+              title="清除搜索"
             >
-              <Search className="w-4 h-4" />
+              ✕
             </button>
           )}
-          {selectedProject && !isOpen && (
+          {selectedProject && !isOpen && !searchTerm && (
             <button
               type="button"
-              onClick={handleClear}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+              onClick={handleClearSelection}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 px-1"
+              title="清除选择"
             >
               ✕
             </button>
@@ -130,7 +138,7 @@ export function SearchableSelect({
                 className="w-full px-3 py-2 text-left hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-b-0"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
+                  <div className="flex flex-col flex-1">
                     <span className="text-sm font-medium text-zinc-900">{project.name}</span>
                     <div className="flex items-center gap-2 mt-1">
                       {project.belong_year && (
@@ -142,7 +150,7 @@ export function SearchableSelect({
                     </div>
                   </div>
                   {project.id === value && (
-                    <Check className="w-4 h-4 text-zinc-900 flex-shrink-0" />
+                    <Check className="w-4 h-4 text-zinc-900 flex-shrink-0 ml-2" />
                   )}
                 </div>
               </button>
