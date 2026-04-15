@@ -50,7 +50,14 @@ export default function TasksPage() {
         getProjects()
       ])
       setTasks(tasksData)
-      setProjects(projectsData)
+      // 过滤掉回款已完成的项目
+      const filteredProjects = projectsData.filter(project => {
+        const paidCount = project.settlement_summary?.paid || 0
+        const totalCount = project.settlement_stages || 1
+        // 如果回款数量等于总段数，则排除该项目
+        return !(paidCount === totalCount && totalCount > 0)
+      })
+      setProjects(filteredProjects)
     } catch (error: any) {
       toast.error('加载数据失败')
     } finally {

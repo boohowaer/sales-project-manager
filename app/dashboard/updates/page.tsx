@@ -319,6 +319,13 @@ export default function UpdatesPage() {
 
   // 过滤项目
   const filteredProjects = projects.filter(project => {
+    // 排除回款已完成的项目
+    const paidCount = project.settlement_summary?.paid || 0
+    const totalCount = project.settlement_stages || 1
+    if (paidCount === totalCount && totalCount > 0) {
+      return false
+    }
+
     // 搜索关键词筛选
     if (searchKeyword.trim()) {
       const keyword = searchKeyword.toLowerCase()
@@ -922,7 +929,7 @@ export default function UpdatesPage() {
                   <SelectValue placeholder="选择项目" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project: any) => (
+                  {filteredProjects.map((project: any) => (
                     <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
                   ))}
                 </SelectContent>
