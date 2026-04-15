@@ -1144,22 +1144,19 @@ export default function ProjectsPage() {
               stages={selectedProjectStages}
               existingStages={selectedProjectSettlements}
               onStagesChange={async () => {
-                // 重新加载结算段数据
-                if (selectedProjectId) {
-                  try {
+                // 重新加载所有项目数据以获取最新的结算汇总信息
+                try {
+                  const projectsData = await getProjects()
+                  setProjects(projectsData)
+
+                  // 同时更新结算段数据
+                  if (selectedProjectId) {
                     const settlements = await getSettlementStages(selectedProjectId)
                     setSelectedProjectSettlements(settlements)
-                    // 同时更新项目列表中的该项目数据
-                    setProjects(prevProjects =>
-                      prevProjects.map(p =>
-                        p.id === selectedProjectId
-                          ? { ...p, settlement_stages: settlements.length || 1 }
-                          : p
-                      )
-                    )
-                  } catch (error) {
-                    console.error('重新加载结算段数据失败:', error)
                   }
+                } catch (error) {
+                  console.error('重新加载数据失败:', error)
+                  toast.error('数据刷新失败，请刷新页面')
                 }
               }}
             />
