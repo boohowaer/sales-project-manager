@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getProjects, getWeeklyUpdates, getProjectWeeklyUpdates, createWeeklyUpdate, updateWeeklyUpdate, deleteWeeklyUpdate, getSettlementStages, createTask } from '@/lib/supabase/queries'
+import { getProjects, getWeeklyUpdates, getProjectWeeklyUpdates, createWeeklyUpdate, updateWeeklyUpdate, deleteWeeklyUpdate, getSettlementStages, createTask, getTasks } from '@/lib/supabase/queries'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Pencil, Trash2, Clock, Search, CheckCircle, Edit3, Filter, X, RotateCcw, CheckSquare } from 'lucide-react'
+import { Pencil, Trash2, Clock, Search, CheckCircle, Edit3, Filter, X, RotateCcw, CheckSquare, ListTodo } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 export default function UpdatesPage() {
@@ -85,6 +85,11 @@ export default function UpdatesPage() {
     due_date: '',
     status: 'pending'
   })
+
+  // 查看任务对话框状态
+  const [viewTasksDialogOpen, setViewTasksDialogOpen] = useState(false)
+  const [viewTasksProject, setViewTasksProject] = useState<any>(null)
+  const [projectTasks, setProjectTasks] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     content: ''
@@ -265,6 +270,19 @@ export default function UpdatesPage() {
       status: 'pending'
     })
     setTaskDialogOpen(true)
+  }
+
+  const handleViewProjectTasks = async (project: any) => {
+    try {
+      setViewTasksProject(project)
+      const tasks = await getTasks()
+      const projectTasksData = tasks.filter((t: any) => t.project_id === project.id)
+      setProjectTasks(projectTasksData)
+      setViewTasksDialogOpen(true)
+    } catch (error: any) {
+      console.error('获取任务失败:', error)
+      toast.error('获取任务失败')
+    }
   }
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -471,7 +489,9 @@ export default function UpdatesPage() {
                   <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[260px] rounded-tl-2xl">项目名称</th>
                   <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[280px]">结算状态</th>
                   <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[180px]">最新进展</th>
-                  <th className="text-left py-4 px-8 text-xs font-medium text-zinc-500 uppercase min-w-[100px] rounded-tr-2xl">操作</th>
+                  <th className="text-right py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[140px] rounded-tr-2xl">
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -555,6 +575,15 @@ export default function UpdatesPage() {
                           title="查看历史"
                         >
                           <Clock className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleViewProjectTasks(project)}
+                          title="查看任务"
+                        >
+                          <ListTodo className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -992,6 +1021,149 @@ export default function UpdatesPage() {
               <Button type="submit" className="bg-zinc-900 text-white hover:bg-zinc-800">创建</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 查看任务对话框 */}
+      <Dialog open={viewTasksDialogOpen} onOpenChange={(open) => {
+        setViewTasksDialogOpen(open)
+        if (!open) {
+          setViewTasksProject(null)
+          setProjectTasks([])
+        }
+      }}>
+        <DialogContent className="max-w-3xl rounded-2xl shadow-xl border-0">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              项目任务 - {viewTasksProject?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* 本周已完成任务 */}
+            <div>
+              <h4 className="text-sm font-semibold text-zinc-900 mb-3 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                本周已完成任务
+              </h4>
+              {projectTasks.filter(t => t.status === 'completed').length > 0 ? (
+                <div className="space-y-2">
+                  {projectTasks
+                    .filter(t => t.status === 'completed')
+                    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                    .map((task) => (
+                      <Card key={task.id} className="rounded-lg shadow-sm border-0 bg-emerald-50 border-l-4 border-l-emerald-500">
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h5 className="font-medium text-sm text-zinc-900 mb-1">{task.title}</h5>
+                              {task.description && (
+                                <p className="text-xs text-zinc-600 line-clamp-2">{task.description}</p>
+                              )}
+                              <div className="flex items-center gap-2 mt-2">
+                                {task.due_date && (
+                                  <span className="text-xs text-zinc-500">
+                                    截止: {new Date(task.due_date).toLocaleDateString('zh-CN')}
+                                  </span>
+                                )}
+                                <span className="text-xs text-zinc-500">
+                                  完成: {new Date(task.updated_at).toLocaleDateString('zh-CN')}
+                                </span>
+                              </div>
+                            </div>
+                            <Badge variant="success" className="text-xs bg-emerald-600 text-white">
+                              已完成
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              ) : (
+                <Card className="rounded-lg shadow-sm border-0 bg-zinc-50">
+                  <CardContent className="p-4 text-center text-sm text-zinc-500">
+                    本周暂无已完成任务
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* 待办任务 */}
+            <div>
+              <h4 className="text-sm font-semibold text-zinc-900 mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                待办任务
+              </h4>
+              {projectTasks.filter(t => t.status !== 'completed').length > 0 ? (
+                <div className="space-y-2">
+                  {projectTasks
+                    .filter(t => t.status !== 'completed')
+                    .sort((a, b) => {
+                      // 按优先级排序
+                      const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 }
+                      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 2
+                      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 2
+                      if (aPriority !== bPriority) return aPriority - bPriority
+                      // 相同优先级按截止日期排序
+                      if (!a.due_date) return 1
+                      if (!b.due_date) return -1
+                      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+                    })
+                    .map((task) => {
+                      const isOverdue = task.due_date && new Date(task.due_date) < new Date()
+                      return (
+                        <Card key={task.id} className={`rounded-lg shadow-sm border-0 ${isOverdue ? 'bg-rose-50 border-l-4 border-l-rose-500' : 'bg-zinc-50'}`}>
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h5 className="font-medium text-sm text-zinc-900 mb-1">{task.title}</h5>
+                                {task.description && (
+                                  <p className="text-xs text-zinc-600 line-clamp-2">{task.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {task.priority === 'urgent' ? '紧急' : task.priority === 'high' ? '高' : task.priority === 'medium' ? '中' : '低'}
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {task.status === 'pending' ? '待处理' : task.status === 'in_progress' ? '进行中' : '已取消'}
+                                  </Badge>
+                                  {task.due_date && (
+                                    <span className={`text-xs ${isOverdue ? 'text-rose-600 font-medium' : 'text-zinc-500'}`}>
+                                      {isOverdue ? '⚠ ' : ''}截止: {new Date(task.due_date).toLocaleDateString('zh-CN')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                </div>
+              ) : (
+                <Card className="rounded-lg shadow-sm border-0 bg-zinc-50">
+                  <CardContent className="p-4 text-center text-sm text-zinc-500">
+                    暂无待办任务
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* 任务统计 */}
+            <div className="flex items-center justify-between bg-zinc-50 rounded-lg p-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-zinc-600">
+                  总任务数: <span className="font-semibold text-zinc-900">{projectTasks.length}</span>
+                </span>
+                <span className="text-zinc-600">
+                  已完成: <span className="font-semibold text-emerald-600">{projectTasks.filter(t => t.status === 'completed').length}</span>
+                </span>
+                <span className="text-zinc-600">
+                  待办: <span className="font-semibold text-amber-600">{projectTasks.filter(t => t.status !== 'completed').length}</span>
+                </span>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
