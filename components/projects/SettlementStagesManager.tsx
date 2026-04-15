@@ -404,8 +404,13 @@ export function SettlementStagesManager({
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
                           {getStatusBadge(stage.accepted, stage.invoiced, stage.paid)}
+                          {stage.notes && (
+                            <span className="text-xs text-zinc-600 inline-flex items-center">
+                              备注：{stage.notes}
+                            </span>
+                          )}
                           {stage.accepted_date && (
                             <span className="text-xs text-zinc-600">
                               验收：{new Date(stage.accepted_date).toLocaleDateString('zh-CN')}

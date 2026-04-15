@@ -482,7 +482,7 @@ export default function UpdatesPage() {
                       <div className="flex flex-col items-start justify-start">
                         <div className="flex items-center gap-2 mb-1">
                           {project.belong_year && (
-                            <span className="text-xs text-indigo-600 font-medium">{project.belong_year}年</span>
+                            <span className="text-xs text-zinc-500 font-medium">{project.belong_year}年</span>
                           )}
                           {project.value && (
                             <span className="text-xs text-zinc-500">¥{project.value.toLocaleString()}</span>
@@ -492,28 +492,29 @@ export default function UpdatesPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex flex-wrap items-center">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {/* 合同签署 */}
                         {project.contract_signed ? (
-                          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-700 text-xs rounded-full flex items-center gap-1">
+                          <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" />
                             已签合同
                           </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-700 text-xs rounded-full">
-                            未签合同
+                        ) : project.has_start_notice ? (
+                          <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            有开工函
                           </span>
-                        )}
-                        {/* 结算段数（与合同签署间距0.25rem） */}
-                        <span className="px-2 py-0.5 bg-zinc-100 text-zinc-700 text-xs rounded-full ml-1">
-                          {project.settlement_stages}段
+                        ) : null}
+                        {/* 验收、开票、回款 */}
+                        <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
+                          验收: {project.settlement_summary?.accepted || 0}/{project.settlement_summary?.total || 0}
                         </span>
-                        {/* 验收、开票、回款（与前一个间距1px） */}
-                        <div className="flex items-center" style={{ gap: '1px' }}>
-                          {getStatusBadge('accepted', project.settlement_summary?.accepted || 0, project.settlement_summary?.total || 0)}
-                          {getStatusBadge('invoiced', project.settlement_summary?.invoiced || 0, project.settlement_summary?.total || 0)}
-                          {getStatusBadge('paid', project.settlement_summary?.paid || 0, project.settlement_summary?.total || 0)}
-                        </div>
+                        <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
+                          开票: {project.settlement_summary?.invoiced || 0}/{project.settlement_summary?.total || 0}
+                        </span>
+                        <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
+                          回款: {project.settlement_summary?.paid || 0}/{project.settlement_summary?.total || 0}
+                        </span>
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -630,11 +631,16 @@ export default function UpdatesPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-zinc-600">结算状态：</span>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary" className="text-xs">共{currentProject.settlement_summary?.total || 0}段</Badge>
-                      {getStatusBadge('accepted', currentProject.settlement_summary?.accepted || 0, currentProject.settlement_summary?.total || 0)}
-                      {getStatusBadge('invoiced', currentProject.settlement_summary?.invoiced || 0, currentProject.settlement_summary?.total || 0)}
-                      {getStatusBadge('paid', currentProject.settlement_summary?.paid || 0, currentProject.settlement_summary?.total || 0)}
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
+                        验收: {currentProject.settlement_summary?.accepted || 0}/{currentProject.settlement_summary?.total || 0}
+                      </span>
+                      <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
+                        开票: {currentProject.settlement_summary?.invoiced || 0}/{currentProject.settlement_summary?.total || 0}
+                      </span>
+                      <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
+                        回款: {currentProject.settlement_summary?.paid || 0}/{currentProject.settlement_summary?.total || 0}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -697,25 +703,22 @@ export default function UpdatesPage() {
 
                     {/* 只读的同步状态 */}
                     <div className="mt-3">
-                      <div className="flex flex-wrap gap-2 text-xs">
+                      <div className="flex flex-wrap gap-1.5">
                         {update.contract_signed && (
-                          <span className="px-2 py-1 bg-zinc-100 text-zinc-700 rounded-full flex items-center gap-1">
+                          <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" />
                             已签合同
                           </span>
                         )}
-                        <span className="px-2 py-1 bg-zinc-100 text-zinc-700 rounded-full">
-                          {update.settlement_total}段结算
-                        </span>
-                        <Badge variant="secondary" className="text-xs">
+                        <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
                           验收: {update.settlement_accepted}/{update.settlement_total}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
+                        </span>
+                        <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
                           开票: {update.settlement_invoiced}/{update.settlement_total}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
+                        </span>
+                        <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
                           回款: {update.settlement_paid}/{update.settlement_total}
-                        </Badge>
+                        </span>
                       </div>
                     </div>
                   </CardContent>

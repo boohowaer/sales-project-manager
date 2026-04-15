@@ -468,8 +468,18 @@ export default function TasksPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-sm text-zinc-600 truncate max-w-[260px]">
-                          {task.projects?.name}
+                        <div className="flex flex-col items-start justify-start">
+                          <div className="flex items-center gap-2 mb-1">
+                            {(task.projects as any)?.belong_year && (
+                              <span className="text-xs text-zinc-500 font-medium">{(task.projects as any).belong_year}年</span>
+                            )}
+                            {(task.projects as any)?.value && (
+                              <span className="text-xs text-zinc-500">¥{(task.projects as any).value.toLocaleString()}</span>
+                            )}
+                          </div>
+                          <div className="text-sm text-zinc-600 truncate max-w-[260px]">
+                            {task.projects?.name}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">

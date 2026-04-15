@@ -510,12 +510,12 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-6">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-semibold text-zinc-900">项目管理</h1>
-          <p className="mt-2 text-zinc-500">管理您的所有销售项目</p>
+          <h1 className="text-2xl font-semibold text-zinc-900">项目管理</h1>
+          <p className="mt-1 text-sm text-zinc-500">管理您的所有销售项目</p>
         </div>
         <div className="flex gap-2 items-center">
           <div className="flex items-center gap-2">
@@ -524,21 +524,21 @@ export default function ProjectsPage() {
               placeholder="搜索项目或客户..."
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              className="w-48 h-9 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+              className="w-48 h-8 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 text-sm"
             />
           </div>
 
           <Button
             onClick={() => setFilterDialogOpen(true)}
             variant="outline"
-            className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+            className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50 h-8 text-sm"
             size="sm"
           >
-            <Filter className="w-4 h-4 mr-2" />
+            <Filter className="w-3.5 h-3.5 mr-1.5" />
             筛选
             {(filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
               filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0) && (
-              <Badge variant="secondary" className="ml-2 bg-zinc-900 text-white">
+              <Badge variant="secondary" className="ml-1. bg-zinc-900 text-white text-xs h-4">
                 {filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length}
               </Badge>
             )}
@@ -546,16 +546,16 @@ export default function ProjectsPage() {
 
           <Button
             onClick={() => setImportDialogOpen(true)}
-            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full"
+            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full h-8 text-sm"
           >
-            <Upload className="w-4 h-4 mr-2" />
+            <Upload className="w-3.5 h-3.5 mr-1.5" />
             批量导入
           </Button>
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button disabled={customers.length === 0} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button disabled={customers.length === 0} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full h-8 text-sm">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
                 添加项目
               </Button>
             </DialogTrigger>
@@ -894,133 +894,142 @@ export default function ProjectsPage() {
 
       {/* 项目列表 */}
       {projects.length === 0 ? (
-        <Card className="rounded-2xl shadow-sm border-0 bg-white">
-          <CardContent className="text-center py-12">
-            <p className="text-zinc-400 mb-4">
+        <Card className="rounded-xl shadow-sm border-0 bg-white">
+          <CardContent className="text-center py-8">
+            <p className="text-sm text-zinc-400 mb-3">
               {customers.length === 0 ? '请先添加客户' : '还没有项目'}
             </p>
             {customers.length > 0 && (
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button onClick={() => setDialogOpen(true)} size="sm" className="h-8 text-sm">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
                 创建第一个项目
               </Button>
             )}
           </CardContent>
         </Card>
       ) : filteredProjects.length === 0 ? (
-        <Card className="rounded-2xl shadow-sm border-0 bg-white">
-          <CardContent className="text-center py-12">
-            <p className="text-zinc-400">没有找到匹配的项目</p>
-            <Button onClick={() => setSearchKeyword('')} variant="outline" className="mt-4">
+        <Card className="rounded-xl shadow-sm border-0 bg-white">
+          <CardContent className="text-center py-8">
+            <p className="text-sm text-zinc-400">没有找到匹配的项目</p>
+            <Button onClick={() => setSearchKeyword('')} variant="outline" size="sm" className="mt-3 h-8 text-sm">
               清除搜索
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-3">
           {filteredProjects.map((project) => (
-            <Card key={project.id} className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white">
-              <CardHeader className="pb-0">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1.5 mb-0">
-                      <span className="text-sm text-zinc-400">{project.customers?.name}</span>
-                      <h3 className="font-semibold text-lg">{project.name}</h3>
-                      <Badge variant={getStatusColor2(project.status) as any}>
-                        {getStatusText2(project.status)}
-                      </Badge>
-                    </div>
+            <Card key={project.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white overflow-hidden">
+              <CardHeader className="pb-3 pt-3 px-4 border-b border-zinc-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-xs text-zinc-500 shrink-0">{project.customers?.name}</span>
+                    <h3 className="font-semibold text-sm truncate">{project.name}</h3>
+                    <Badge variant={getStatusColor2(project.status) as any} className="shrink-0">
+                      {getStatusText2(project.status)}
+                    </Badge>
                   </div>
-                  <div className="flex space-x-1">
+                  <div className="flex gap-1 shrink-0 ml-2">
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-7 w-7"
                       onClick={() => handleEdit(project)}
                       title="编辑项目"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-7 w-7"
                       onClick={() => handleManageSettlements(project)}
                       title="结算阶段"
                     >
-                      <Coins className="w-4 h-4 text-amber-600" />
+                      <Coins className="w-3.5 h-3.5 text-amber-600" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-7 w-7"
                       onClick={() => handleOpenCreateTask(project.id)}
                       title="创建任务"
                     >
-                      <CheckSquare className="w-4 h-4" />
+                      <CheckSquare className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-7 w-7"
                       onClick={() => handleDelete(project.id)}
                       title="删除项目"
                     >
-                      <Trash2 className="w-4 h-4 text-rose-500" />
+                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex flex-wrap gap-2 mb-4 -mt-2">
+              <CardContent className="p-4">
+                <div className="flex flex-wrap gap-1.5 mb-3">
                   {/* 归属年份标签 */}
                   {project.belong_year && (
-                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">
+                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[11px] rounded-full font-medium">
                       {project.belong_year}年
                     </span>
                   )}
                   {project.has_start_notice && (
-                    <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">✓ 有开工函</span>
+                    <span className="px-2 py-0.5 bg-sky-100 text-sky-700 text-[11px] rounded-full font-medium">✓ 有开工函</span>
                   )}
                   {project.contract_signed && (
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ 已签合同</span>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[11px] rounded-full font-medium">✓ 已签合同</span>
                   )}
-                  {/* 显示结算段信息 */}
-                  <span className="px-2 py-1 bg-zinc-100 text-zinc-700 text-xs rounded-full">
-                    {project.settlement_stages}段结算
-                  </span>
                   {/* 验收、开票、回款状态 */}
-                  {getStatusBadge('accepted', project.settlement_summary?.accepted || 0, project.settlement_summary?.total || 0)}
-                  {getStatusBadge('invoiced', project.settlement_summary?.invoiced || 0, project.settlement_summary?.total || 0)}
-                  {getStatusBadge('paid', project.settlement_summary?.paid || 0, project.settlement_summary?.total || 0)}
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] rounded-full font-medium">
+                    验收: {project.settlement_summary?.accepted || 0}/{project.settlement_summary?.total || 0}
+                  </span>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] rounded-full font-medium">
+                    开票: {project.settlement_summary?.invoiced || 0}/{project.settlement_summary?.total || 0}
+                  </span>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] rounded-full font-medium">
+                    回款: {project.settlement_summary?.paid || 0}/{project.settlement_summary?.total || 0}
+                  </span>
                 </div>
                 {project.description && (
-                  <p className="text-sm text-zinc-500 mb-4">{project.description}</p>
+                  <p className="text-xs text-zinc-500 mb-3 line-clamp-2">{project.description}</p>
                 )}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                   {project.value && (
                     <div>
-                      <p className="text-zinc-500">项目价值</p>
-                      <p className="font-semibold">¥{project.value.toLocaleString()}</p>
+                      <p className="text-zinc-500 text-[11px]">项目价值</p>
+                      <p className="font-semibold text-sm">¥{project.value.toLocaleString()}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-zinc-500">成功概率</p>
-                    <p className="font-semibold">{project.probability}%</p>
+                    <p className="text-zinc-500 text-[11px]">成功概率</p>
+                    <p className="font-semibold text-sm">{project.probability}%</p>
                   </div>
                   {project.start_date && (
                     <div>
-                      <p className="text-zinc-500">开始日期</p>
-                      <p className="font-semibold">
+                      <p className="text-zinc-500 text-[11px]">开始日期</p>
+                      <p className="font-semibold text-sm">
                         {new Date(project.start_date).toLocaleDateString('zh-CN')}
                       </p>
                     </div>
                   )}
                   {project.expected_close_date && (
                     <div>
-                      <p className="text-zinc-500">预期成交</p>
-                      <p className="font-semibold">
+                      <p className="text-zinc-500 text-[11px]">预期成交</p>
+                      <p className="font-semibold text-sm">
                         {new Date(project.expected_close_date).toLocaleDateString('zh-CN')}
                       </p>
                     </div>
                   )}
                 </div>
+                {project.task_summary && project.task_summary.total > 0 && (
+                  <div className="mt-3 pt-3 border-t border-zinc-100">
+                    <p className="text-[11px] text-zinc-500">已完成/总任务数：{project.task_summary.completed}/{project.task_summary.total}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
