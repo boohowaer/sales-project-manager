@@ -231,7 +231,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-medium text-zinc-500">
-              项目总价值
+              本年度项目总价值
             </CardTitle>
             <TrendingUp className="w-4.5 h-4.5 text-zinc-400" />
           </CardHeader>
@@ -318,7 +318,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-medium text-zinc-500">
-              已签约项目金额
+              本年度已签约项目金额
             </CardTitle>
             <FileCheck className="w-4.5 h-4.5 text-zinc-400" />
           </CardHeader>
@@ -360,7 +360,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-medium text-zinc-500">
-              已验收项目金额
+              本年度已验收项目金额
             </CardTitle>
             <FileText className="w-4.5 h-4.5 text-zinc-400" />
           </CardHeader>
@@ -382,7 +382,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-medium text-zinc-500">
-              已开票项目金额
+              本年度已开票项目金额
             </CardTitle>
             <Receipt className="w-4.5 h-4.5 text-zinc-400" />
           </CardHeader>
@@ -404,7 +404,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm font-medium text-zinc-500">
-              已回款项目金额
+              本年度已回款项目金额
             </CardTitle>
             <DollarSign className="w-4.5 h-4.5 text-zinc-400" />
           </CardHeader>

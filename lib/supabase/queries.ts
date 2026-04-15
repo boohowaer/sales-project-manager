@@ -107,15 +107,17 @@ export async function getProjects(): Promise<any[]> {
   // 为每个项目计算结算段状态
   return projects.map((project: any) => {
     const projectSettlements = settlements?.filter(s => s.project_id === project.id) || []
-    const totalStages = project.settlement_stages || 1
+    // 根据实际的结算段数量计算，如果没有结算段则默认为1
+    const actualStagesCount = projectSettlements.length > 0 ? projectSettlements.length : 1
     const acceptedCount = projectSettlements.filter(s => s.accepted).length
     const invoicedCount = projectSettlements.filter(s => s.invoiced).length
     const paidCount = projectSettlements.filter(s => s.paid).length
 
     return {
       ...project,
+      settlement_stages: actualStagesCount, // 使用实际的结算段数量
       settlement_summary: {
-        total: totalStages,
+        total: actualStagesCount,
         accepted: acceptedCount,
         invoiced: invoicedCount,
         paid: paidCount
@@ -413,11 +415,16 @@ export async function updateUserSettings(settings: UserSettingsUpdate): Promise<
 export async function getDashboardStats(supabase?: any) {
   const client = supabase || await createClient()
 
-  // 获取所有项目以计算统计数据
+  // 获取当前年份
+  const currentYear = new Date().getFullYear()
+
+  // 只获取当前年份的项目以计算统计数据
   const { data: allProjects, error: projectsError } = await client
     .from('projects')
     .select('id, status, value, probability, has_start_notice, contract_signed')
+    .eq('belong_year', currentYear)
 
+  console.log('仪表盘统计 - 当前年份:', currentYear)
   console.log('仪表盘统计 - 项目数据:', allProjects)
   console.log('仪表盘统计 - 项目错误:', projectsError)
 

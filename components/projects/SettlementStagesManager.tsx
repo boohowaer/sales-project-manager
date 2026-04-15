@@ -18,18 +18,24 @@ interface SettlementStagesManagerProps {
   projectId: string
   stages: number
   existingStages: SettlementStage[]
+  projectValue: number | null
   onStagesChange: () => void
+  onClose?: () => void
 }
 
 export function SettlementStagesManager({
   projectId,
   stages,
   existingStages,
-  onStagesChange
+  projectValue,
+  onStagesChange,
+  onClose
 }: SettlementStagesManagerProps) {
   const [stageList, setStageList] = useState<SettlementStage[]>(existingStages)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
   const [formData, setFormData] = useState({
     stage_number: 1,
     stage_name: '',
@@ -45,51 +51,130 @@ export function SettlementStagesManager({
 
   useEffect(() => {
     setStageList(existingStages)
+    setHasChanges(false)
   }, [existingStages])
 
-  const handleSave = async () => {
+  // 添加/编辑结算段 - 只更新本地状态
+  const handleAddEditStage = () => {
+    const newStage: SettlementStage = {
+      id: editingId || `temp-${Date.now()}`,
+      project_id: projectId,
+      stage_number: formData.stage_number,
+      stage_name: formData.stage_name || null,
+      amount: formData.amount ? parseFloat(formData.amount) : null,
+      accepted: formData.accepted,
+      accepted_date: formData.accepted_date || null,
+      invoiced: formData.invoiced,
+      invoiced_date: formData.invoiced_date || null,
+      paid: formData.paid,
+      paid_date: formData.paid_date || null,
+      notes: formData.notes || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    if (editingId) {
+      // 编辑现有结算段
+      setStageList(prev => prev.map(s => s.id === editingId ? newStage : s))
+    } else {
+      // 添加新结算段
+      setStageList(prev => [...prev, newStage])
+    }
+
+    setHasChanges(true)
+    setDialogOpen(false)
+    resetForm()
+  }
+
+  // 删除结算段 - 只更新本地状态
+  const handleDeleteStage = (id: string) => {
+    if (!confirm('确定要删除这个结算段吗？')) {
+      return
+    }
+
+    setStageList(prev => prev.filter(s => s.id !== id))
+    setHasChanges(true)
+    toast.success('结算段已删除（未保存）')
+  }
+
+  // 总保存按钮 - 验证并批量保存到数据库
+  const handleSaveAll = async () => {
+    // 计算所有结算段的金额总和
+    const totalAmount = stageList.reduce((sum, stage) => sum + (stage.amount || 0), 0)
+
+    // 如果项目价值存在且金额总和与项目价值不一致，显示确认对话框
+    if (projectValue && Math.abs(totalAmount - projectValue) > 0.01) {
+      setShowConfirmDialog(true)
+      return
+    }
+
+    // 直接保存
+    await performSaveAll()
+  }
+
+  const performSaveAll = async () => {
     try {
-      if (editingId) {
-        await updateSettlementStage(editingId, {
-          stage_number: formData.stage_number,
-          stage_name: formData.stage_name || null,
-          amount: formData.amount ? parseFloat(formData.amount) : null,
-          accepted: formData.accepted,
-          accepted_date: formData.accepted_date || null,
-          invoiced: formData.invoiced,
-          invoiced_date: formData.invoiced_date || null,
-          paid: formData.paid,
-          paid_date: formData.paid_date || null,
-          notes: formData.notes || null
+      // 获取数据库中现有的结算段
+      const existingStagesData = await getSettlementStages(projectId)
+      const existingIds = existingStagesData.map(s => s.id)
+
+      // 找出需要添加、更新、删除的结算段
+      const toAdd = stageList.filter(s => s.id.startsWith('temp-'))
+      const toUpdate = stageList.filter(s => !s.id.startsWith('temp-') && existingIds.includes(s.id))
+      const toDelete = existingStagesData.filter(s => !stageList.find(ns => ns.id === s.id))
+
+      // 执行删除
+      for (const stage of toDelete) {
+        await deleteSettlementStage(stage.id)
+      }
+
+      // 执行更新
+      for (const stage of toUpdate) {
+        await updateSettlementStage(stage.id, {
+          stage_number: stage.stage_number,
+          stage_name: stage.stage_name,
+          amount: stage.amount,
+          accepted: stage.accepted,
+          accepted_date: stage.accepted_date,
+          invoiced: stage.invoiced,
+          invoiced_date: stage.invoiced_date,
+          paid: stage.paid,
+          paid_date: stage.paid_date,
+          notes: stage.notes
         })
-        toast.success('结算段更新成功')
-      } else {
+      }
+
+      // 执行添加
+      for (const stage of toAdd) {
         const newStage = await createSettlementStage({
           project_id: projectId,
-          stage_number: formData.stage_number,
-          stage_name: formData.stage_name || null,
-          amount: formData.amount ? parseFloat(formData.amount) : null,
-          accepted: formData.accepted,
-          accepted_date: formData.accepted_date || null,
-          invoiced: formData.invoiced,
-          invoiced_date: formData.invoiced_date || null,
-          paid: formData.paid,
-          paid_date: formData.paid_date || null,
-          notes: formData.notes || null
+          stage_number: stage.stage_number,
+          stage_name: stage.stage_name,
+          amount: stage.amount,
+          accepted: stage.accepted,
+          accepted_date: stage.accepted_date,
+          invoiced: stage.invoiced,
+          invoiced_date: stage.invoiced_date,
+          paid: stage.paid,
+          paid_date: stage.paid_date,
+          notes: stage.notes
         })
-        toast.success('结算段创建成功')
-        // 立即添加到本地列表
-        setStageList(prev => [...prev, newStage])
+        // 更新本地列表中的ID
+        setStageList(prev => prev.map(s => s.id === stage.id ? { ...s, id: newStage.id } : s))
       }
-      setDialogOpen(false)
-      resetForm()
-      // 延迟调用 onStagesChange，确保数据库操作完成
+
+      setShowConfirmDialog(false)
+      setHasChanges(false)
+      toast.success('结算阶段保存成功')
+
+      // 延迟调用 onStagesChange 和 onClose
       setTimeout(() => {
         onStagesChange()
+        onClose?.()
       }, 100)
     } catch (error: any) {
       console.error('保存结算段失败:', error)
-      toast.error(error.message || '操作失败')
+      toast.error(error.message || '保存失败')
     }
   }
 
@@ -126,26 +211,6 @@ export function SettlementStagesManager({
     setDialogOpen(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这个结算段吗？')) {
-      return
-    }
-
-    try {
-      await deleteSettlementStage(id)
-      toast.success('结算段删除成功')
-      // 立即从本地列表中移除
-      setStageList(prev => prev.filter(s => s.id !== id))
-      // 延迟调用 onStagesChange，确保数据库操作完成
-      setTimeout(() => {
-        onStagesChange()
-      }, 100)
-    } catch (error: any) {
-      console.error('删除结算段失败:', error)
-      toast.error(error.message || '删除失败')
-    }
-  }
-
   const getStatusBadge = (accepted: boolean, invoiced: boolean, paid: boolean) => {
     if (paid) return <Badge variant="success">已回款</Badge>
     if (invoiced) return <Badge variant="info">已开票</Badge>
@@ -165,7 +230,7 @@ export function SettlementStagesManager({
         <div>
           <h3 className="text-lg font-semibold">结算阶段管理</h3>
           <p className="text-sm text-zinc-600">
-            共 {stages} 段 · 已完成 {getProgressPercentage()}%
+            共 {stageList.length} 段 · 已完成 {getProgressPercentage()}%
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -173,7 +238,7 @@ export function SettlementStagesManager({
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button size="sm" disabled={stageList.length >= stages} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
+            <Button size="sm" className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
               <Plus className="w-4 h-4 mr-1" />
               添加结算段
             </Button>
@@ -296,8 +361,8 @@ export function SettlementStagesManager({
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-zinc-200 text-zinc-700 hover:bg-zinc-50">
                   取消
                 </Button>
-                <Button onClick={handleSave} className="bg-zinc-900 text-white hover:bg-zinc-800">
-                  {editingId ? '保存' : '添加'}
+                <Button onClick={handleAddEditStage} className="bg-zinc-900 text-white hover:bg-zinc-800">
+                  确定
                 </Button>
               </div>
             </div>
@@ -305,6 +370,7 @@ export function SettlementStagesManager({
         </Dialog>
       </div>
 
+      {/* 结算阶段列表 */}
       {stageList.length === 0 ? (
         <Card className="rounded-2xl shadow-sm border-0 bg-white">
           <CardContent className="text-center py-8 text-zinc-500">
@@ -314,72 +380,158 @@ export function SettlementStagesManager({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {stageList
-            .sort((a, b) => a.stage_number - b.stage_number)
-            .map((stage) => (
-              <Card key={stage.id} className={stage.paid ? 'rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white border-l-4 border-l-emerald-500' : 'rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white'}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="flex items-center justify-center w-8 h-8 bg-sky-100 text-sky-600 rounded-full font-semibold">
-                          {stage.stage_number}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {stageList
+              .sort((a, b) => a.stage_number - b.stage_number)
+              .map((stage) => (
+                <Card key={stage.id} className={stage.paid ? 'rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white border-l-4 border-l-emerald-500' : 'rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white'}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center justify-center w-8 h-8 bg-sky-100 text-sky-600 rounded-full font-semibold">
+                            {stage.stage_number}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-zinc-900">
+                              {stage.stage_name || `第${stage.stage_number}段`}
+                            </h4>
+                            {stage.amount && (
+                              <p className="text-sm text-zinc-600">
+                                ¥{stage.amount.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-zinc-900">
-                            {stage.stage_name || `第${stage.stage_number}段`}
-                          </h4>
-                          {stage.amount && (
-                            <p className="text-sm text-zinc-600">
-                              ¥{stage.amount.toLocaleString()}
-                            </p>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {getStatusBadge(stage.accepted, stage.invoiced, stage.paid)}
+                          {stage.accepted_date && (
+                            <span className="text-xs text-zinc-600">
+                              验收：{new Date(stage.accepted_date).toLocaleDateString('zh-CN')}
+                            </span>
+                          )}
+                          {stage.invoiced_date && (
+                            <span className="text-xs text-zinc-600">
+                              开票：{new Date(stage.invoiced_date).toLocaleDateString('zh-CN')}
+                            </span>
+                          )}
+                          {stage.paid_date && (
+                            <span className="text-xs text-zinc-600">
+                              回款：{new Date(stage.paid_date).toLocaleDateString('zh-CN')}
+                            </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {getStatusBadge(stage.accepted, stage.invoiced, stage.paid)}
-                        {stage.accepted_date && (
-                          <span className="text-xs text-zinc-600">
-                            验收：{new Date(stage.accepted_date).toLocaleDateString('zh-CN')}
-                          </span>
-                        )}
-                        {stage.invoiced_date && (
-                          <span className="text-xs text-zinc-600">
-                            开票：{new Date(stage.invoiced_date).toLocaleDateString('zh-CN')}
-                          </span>
-                        )}
-                        {stage.paid_date && (
-                          <span className="text-xs text-zinc-600">
-                            回款：{new Date(stage.paid_date).toLocaleDateString('zh-CN')}
-                          </span>
-                        )}
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(stage)}
+                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteStage(stage.id)}
+                          className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-500" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(stage)}
-                        className="h-8 w-8 hover:bg-zinc-100 text-zinc-600"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(stage.id)}
-                        className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
-                      >
-                        <Trash2 className="w-4 h-4 text-rose-500" />
-                      </Button>
-                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+
+          {/* 金额统计 */}
+          <div className="bg-zinc-50 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              {projectValue && (
+                <div>
+                  <p className="text-sm text-zinc-600">项目价值</p>
+                  <p className="text-2xl font-semibold text-zinc-900 mt-1">
+                    ¥{projectValue.toLocaleString()}
+                  </p>
+                </div>
+              )}
+              <div className="text-right">
+                <p className="text-sm text-zinc-600">结算段金额总和</p>
+                <p className="text-2xl font-semibold text-zinc-900 mt-1">
+                  ¥{stageList.reduce((sum, stage) => sum + (stage.amount || 0), 0).toLocaleString()}
+                </p>
+                {projectValue && (
+                  <div className="mt-1">
+                    {Math.abs(stageList.reduce((sum, stage) => sum + (stage.amount || 0), 0) - projectValue) < 0.01 ? (
+                      <p className="text-sm text-emerald-600">✓ 金额一致</p>
+                    ) : (
+                      <p className="text-sm text-amber-600">⚠ 金额不一致</p>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 总保存按钮 */}
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                // 重置为原始数据
+                setStageList(existingStages)
+                setHasChanges(false)
+                toast.info('已取消未保存的修改')
+              }}
+              disabled={!hasChanges}
+              className="border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+            >
+              取消修改
+            </Button>
+            <Button
+              onClick={handleSaveAll}
+              disabled={!hasChanges}
+              className="bg-zinc-900 text-white hover:bg-zinc-800"
+            >
+              保存结算阶段
+            </Button>
+          </div>
         </div>
       )}
+
+      {/* 确认对话框 */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="rounded-2xl shadow-xl border-0">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">确认保存</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-700">
+              当前结算阶段设置金额总和（¥{stageList.reduce((sum, stage) => sum + (stage.amount || 0), 0).toLocaleString()}）与项目信息中项目价值（¥{projectValue?.toLocaleString()}）不一致，是否确认保存？
+            </p>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowConfirmDialog(false)}
+                className="border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={performSaveAll}
+                className="bg-zinc-900 text-white hover:bg-zinc-800"
+              >
+                确认保存
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

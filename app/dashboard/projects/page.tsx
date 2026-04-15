@@ -60,6 +60,7 @@ export default function ProjectsPage() {
   const [settlementDialogOpen, setSettlementDialogOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [selectedProjectStages, setSelectedProjectStages] = useState<number>(1)
+  const [selectedProjectValue, setSelectedProjectValue] = useState<number | null>(null)
   const [selectedProjectSettlements, setSelectedProjectSettlements] = useState<any[]>([])
 
   // 筛选状态 - 从localStorage恢复
@@ -278,7 +279,7 @@ export default function ProjectsPage() {
       expected_close_date: project.expected_close_date || '',
       has_start_notice: project.has_start_notice || false,
       contract_signed: project.contract_signed || false,
-      settlement_stages: project.settlement_stages || 1,
+      settlement_stages: 1, // 结算段数现在自动从结算段数量计算，表单中固定为1
       belong_year: project.belong_year ? project.belong_year.toString() : ''
     })
     setEditingId(project.id)
@@ -288,6 +289,7 @@ export default function ProjectsPage() {
   const handleManageSettlements = async (project: any) => {
     setSelectedProjectId(project.id)
     setSelectedProjectStages(project.settlement_stages || 1)
+    setSelectedProjectValue(project.value || null)
 
     // 从数据库获取结算段数据
     try {
@@ -728,35 +730,37 @@ export default function ProjectsPage() {
         <DialogTrigger asChild>
           <Button style={{ display: 'none' }} />
         </DialogTrigger>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border-0">
+        <DialogContent className="max-w-3xl rounded-2xl shadow-xl border-0">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">{editingId ? "编辑项目" : "添加新项目"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="name" className="text-sm font-medium text-zinc-700">项目名称 *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="例如：网站开发项目"
+            <form onSubmit={handleSubmit} className="space-y-4 px-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name" className="text-sm font-medium text-zinc-700">项目名称 *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="例如：网站开发项目"
                     className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                />
-              </div>
-              <div>
-                <Label htmlFor="customer_id" className="text-sm font-medium text-zinc-700">客户 *</Label>
-                <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
-                  <SelectTrigger className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
-                    <SelectValue placeholder="选择客户" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="customer_id" className="text-sm font-medium text-zinc-700">客户 *</Label>
+                  <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
+                    <SelectTrigger className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
+                      <SelectValue placeholder="选择客户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div>
                 <Label htmlFor="description" className="text-sm font-medium text-zinc-700">项目描述</Label>
@@ -765,66 +769,12 @@ export default function ProjectsPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="项目的详细信息..."
-                      className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 resize-none"
+                  rows={2}
                 />
               </div>
 
-              {/* 项目状态管理 */}
-              <div className="mt-6">
-                <h4 className="text-sm font-semibold mb-4">项目状态</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="has_start_notice"
-                      checked={formData.has_start_notice}
-                      onChange={(e) => setFormData({ ...formData, has_start_notice: e.target.checked })}
-                      className="w-4 h-4 rounded border-zinc-300"
-                    />
-                    <Label htmlFor="has_start_notice" className="text-sm">有开工函</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="contract_signed"
-                      checked={formData.contract_signed}
-                      onChange={(e) => setFormData({ ...formData, contract_signed: e.target.checked })}
-                      className="w-4 h-4 rounded border-zinc-300"
-                    />
-                    <Label htmlFor="contract_signed" className="text-sm">已签署合同</Label>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <Label htmlFor="belong_year" className="text-sm font-medium text-zinc-700">归属年份</Label>
-                  <Input
-                    id="belong_year"
-                    type="number"
-                    min="2000"
-                    max="2100"
-                    value={formData.belong_year}
-                    onChange={(e) => setFormData({ ...formData, belong_year: e.target.value })}
-                    placeholder="2024"
-                    className="mt-2 w-32 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                  <p className="text-xs text-zinc-500 mt-1">项目归属的年份（如：2024）</p>
-                </div>
-                <div className="mt-4">
-                  <Label htmlFor="settlement_stages" className="text-sm font-medium text-zinc-700">结算段数</Label>
-                  <Input
-                    id="settlement_stages"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.settlement_stages}
-                    onChange={(e) => setFormData({ ...formData, settlement_stages: parseInt(e.target.value) || 1 })}
-                    placeholder="1"
-                    className="mt-2 w-32 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                  <p className="text-xs text-zinc-500 mt-1">设置项目分几段结算（最多10段）</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="status" className="text-sm font-medium text-zinc-700">状态</Label>
                   <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
@@ -850,19 +800,63 @@ export default function ProjectsPage() {
                       className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="belong_year" className="text-sm font-medium text-zinc-700">归属年份</Label>
+                  <Input
+                    id="belong_year"
+                    type="number"
+                    min="2000"
+                    max="2100"
+                    value={formData.belong_year}
+                    onChange={(e) => setFormData({ ...formData, belong_year: e.target.value })}
+                    placeholder="2024"
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="probability" className="text-sm font-medium text-zinc-700">成功概率：{formData.probability}%</Label>
-                <Input
-                  id="probability"
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={formData.probability}
-                  onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) })}
-                  className="mt-2"
-                />
+
+              {/* 第四行：合同状态 + 成功概率 */}
+              <div className="grid grid-cols-[auto_1fr] gap-6 mt-6">
+                <div>
+                  <Label className="text-sm font-medium text-zinc-700 mb-2 block">合同状态</Label>
+                  <div className="flex gap-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="has_start_notice"
+                        checked={formData.has_start_notice}
+                        onChange={(e) => setFormData({ ...formData, has_start_notice: e.target.checked })}
+                        className="w-4 h-4 rounded border-zinc-300 accent-zinc-600"
+                      />
+                      <Label htmlFor="has_start_notice" className="text-sm cursor-pointer">有开工函</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="contract_signed"
+                        checked={formData.contract_signed}
+                        onChange={(e) => setFormData({ ...formData, contract_signed: e.target.checked })}
+                        className="w-4 h-4 rounded border-zinc-300 accent-zinc-600"
+                      />
+                      <Label htmlFor="contract_signed" className="text-sm cursor-pointer">已签署合同</Label>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 ml-8">
+                  <Label htmlFor="probability" className="text-sm font-medium text-zinc-700 mb-2 block">成功概率：{formData.probability}%</Label>
+                  <input
+                    id="probability"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formData.probability}
+                    onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) })}
+                    className="w-full h-2 accent-zinc-600"
+                  />
+                </div>
               </div>
+
+              {/* 第五行：时间信息 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="start_date" className="text-sm font-medium text-zinc-700">开始日期</Label>
@@ -885,11 +879,13 @@ export default function ProjectsPage() {
                   />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2">
+              <div className="flex justify-end space-x-2 pt-2 border-t">
                 <Button type="button" onClick={() => setDialogOpen(false)} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">
                   取消
                 </Button>
-                <Button type="submit">{editingId ? '保存' : '创建'}</Button>
+                <Button type="submit" className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
+                  {editingId ? '保存' : '创建'}
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -1132,6 +1128,7 @@ export default function ProjectsPage() {
         if (!open) {
           setSelectedProjectId(null)
           setSelectedProjectStages(1)
+          setSelectedProjectValue(null)
         }
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border-0">
@@ -1143,6 +1140,7 @@ export default function ProjectsPage() {
               projectId={selectedProjectId}
               stages={selectedProjectStages}
               existingStages={selectedProjectSettlements}
+              projectValue={selectedProjectValue}
               onStagesChange={async () => {
                 // 重新加载所有项目数据以获取最新的结算汇总信息
                 try {
@@ -1158,6 +1156,9 @@ export default function ProjectsPage() {
                   console.error('重新加载数据失败:', error)
                   toast.error('数据刷新失败，请刷新页面')
                 }
+              }}
+              onClose={() => {
+                setSettlementDialogOpen(false)
               }}
             />
           )}
