@@ -930,7 +930,19 @@ export default function UpdatesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {filteredProjects.map((project: any) => (
-                    <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                    <SelectItem key={project.id} value={project.id}>
+                      <div className="flex flex-col">
+                        <span>{project.name}</span>
+                        <div className="flex items-center gap-2">
+                          {project.belong_year && (
+                            <span className="text-xs text-zinc-500">{project.belong_year}年</span>
+                          )}
+                          {project.value && (
+                            <span className="text-xs text-zinc-500">¥{project.value.toLocaleString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
