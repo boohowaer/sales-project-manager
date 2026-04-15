@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Pencil, Trash2, Clock, Search, CheckCircle, Edit3, Filter, X, RotateCcw, CheckSquare } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -922,31 +922,14 @@ export default function UpdatesPage() {
                 className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
               />
             </div>
-            <div>
-              <Label htmlFor="project_id" className="text-sm font-medium text-zinc-700">关联项目 *</Label>
-              <Select value={taskFormData.project_id} onValueChange={(value) => setTaskFormData({ ...taskFormData, project_id: value })}>
-                <SelectTrigger className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
-                  <SelectValue placeholder="选择项目" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredProjects.map((project: any) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      <div className="flex flex-col">
-                        <span>{project.name}</span>
-                        <div className="flex items-center gap-2">
-                          {project.belong_year && (
-                            <span className="text-xs text-zinc-500">{project.belong_year}年</span>
-                          )}
-                          {project.value && (
-                            <span className="text-xs text-zinc-500">¥{project.value.toLocaleString()}</span>
-                          )}
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SearchableSelect
+              value={taskFormData.project_id}
+              onChange={(value) => setTaskFormData({ ...taskFormData, project_id: value })}
+              options={filteredProjects}
+              placeholder="搜索并选择项目"
+              label="关联项目"
+              required
+            />
             <div>
               <Label htmlFor="description" className="text-sm font-medium text-zinc-700">任务描述</Label>
               <Textarea
