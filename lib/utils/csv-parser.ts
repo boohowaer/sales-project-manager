@@ -409,20 +409,6 @@ export function validateProjectCSV(
       project.contract_signed = false
     }
 
-    // 结算段数 (可选)
-    const settlementStagesIndex = cleanHeaders.indexOf('结算段数')
-    if (settlementStagesIndex !== -1 && row[settlementStagesIndex]) {
-      const stages = parseInt(row[settlementStagesIndex]!.trim())
-      if (isNaN(stages) || stages < 1 || stages > 10) {
-        errors.push({ row: rowNum, field: '结算段数', message: '结算段数必须是1-10之间的整数' })
-        rowHasError = true
-      } else {
-        project.settlement_stages = stages
-      }
-    } else {
-      project.settlement_stages = 1
-    }
-
     // 归属年份 (可选)
     const belongYearIndex = cleanHeaders.indexOf('归属年份')
     if (belongYearIndex !== -1 && row[belongYearIndex]) {

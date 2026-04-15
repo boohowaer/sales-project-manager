@@ -140,7 +140,6 @@ export async function POST(request: NextRequest) {
             p.start_date ? 1 : 0,
             p.expected_close_date ? 1 : 0,
             p.probability !== null ? 1 : 0,
-            p.settlement_stages !== null ? 1 : 0,
             p.belong_year !== null ? 1 : 0
           ].reduce((a, b) => a + b, 0)
         }))
@@ -182,7 +181,6 @@ export async function POST(request: NextRequest) {
         actual_close_date: null,
         has_start_notice: project.has_start_notice,
         contract_signed: project.contract_signed,
-        settlement_stages: project.settlement_stages,
         belong_year: project.belong_year,
         user_id: user.id
       }
