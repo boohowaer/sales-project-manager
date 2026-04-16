@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 export default function DashboardPage() {
   const router = useRouter()
   const [stats, setStats] = useState<any>(null)
+  const [overdueTasks, setOverdueTasks] = useState<any[]>([])
   const [upcomingTasks, setUpcomingTasks] = useState<any[]>([])
   const [userSettings, setUserSettings] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -60,7 +61,8 @@ export default function DashboardPage() {
         getUserSettings()
       ])
       setStats(statsData)
-      setUpcomingTasks(tasksData)
+      setOverdueTasks(tasksData.overdue)
+      setUpcomingTasks(tasksData.upcoming)
       setCustomers(customersData)
       setUserSettings(settingsData)
     } catch (error: any) {
@@ -424,42 +426,52 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* 即将到期的任务 */}
+      {/* 已过期和本周即将到期的任务 */}
       <Card className="rounded-2xl shadow-sm border-0 bg-white">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-semibold">即将到期的任务</CardTitle>
+        <CardHeader className="pb-5">
+          <CardTitle className="text-lg font-semibold">已过期和本周即将到期的任务</CardTitle>
         </CardHeader>
         <CardContent>
-          {upcomingTasks.length === 0 ? (
+          {overdueTasks.length === 0 && upcomingTasks.length === 0 ? (
             <div className="text-center py-8 text-zinc-400">
-              暂无即将到期的任务
+              暂无过期或本周即将到期的任务
             </div>
           ) : (
             <div className="space-y-3">
-              {upcomingTasks.map((task: any) => (
-                <div
-                  key={task.id}
-                  className="flex items-center justify-between p-4 bg-zinc-50 rounded-xl hover:bg-zinc-100 transition-colors"
-                >
-                  <div className="flex-1">
-                    <h3 className="font-medium text-zinc-900 text-sm">{task.title}</h3>
-                    <p className="text-sm text-zinc-500 mt-0.5">
-                      {task.projects?.name}
-                    </p>
+              {[...overdueTasks, ...upcomingTasks].map((task: any) => {
+                const isOverdue = new Date(task.due_date) < new Date()
+                return (
+                  <div
+                    key={task.id}
+                    className={`flex items-center justify-between p-4 rounded-xl transition-colors ${
+                      isOverdue
+                        ? 'bg-red-50 hover:bg-red-100'
+                        : 'bg-zinc-50 hover:bg-zinc-100'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <h3 className="font-medium text-zinc-900 text-sm">{task.title}</h3>
+                      <p className="text-sm text-zinc-500 mt-0.5">
+                        {task.projects?.name}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-medium ${
+                        isOverdue ? 'text-red-600' : 'text-zinc-600'
+                      }`}>
+                        {new Date(task.due_date).toLocaleDateString('zh-CN')}
+                        {isOverdue && <span className="ml-1 text-xs">(已过期)</span>}
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {task.priority === 'urgent' && '紧急'}
+                        {task.priority === 'high' && '高优先级'}
+                        {task.priority === 'medium' && '中优先级'}
+                        {task.priority === 'low' && '低优先级'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-zinc-600 font-medium">
-                      {new Date(task.due_date).toLocaleDateString('zh-CN')}
-                    </p>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      {task.priority === 'urgent' && '紧急'}
-                      {task.priority === 'high' && '高优先级'}
-                      {task.priority === 'medium' && '中优先级'}
-                      {task.priority === 'low' && '低优先级'}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

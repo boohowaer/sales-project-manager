@@ -27,6 +27,13 @@ export default function UpdatesPage() {
   const [searchKeyword, setSearchKeyword] = useState<string>('')
 
   // 筛选状态 - 从localStorage恢复
+  const [filterProjectStatus, setFilterProjectStatus] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('updates-filterProjectStatus')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
   const [filterContractStatus, setFilterContractStatus] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('updates-filterContractStatus')
@@ -67,13 +74,14 @@ export default function UpdatesPage() {
   // 保存筛选器状态到localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      localStorage.setItem('updates-filterProjectStatus', JSON.stringify(filterProjectStatus))
       localStorage.setItem('updates-filterContractStatus', JSON.stringify(filterContractStatus))
       localStorage.setItem('updates-filterAcceptedStatus', JSON.stringify(filterAcceptedStatus))
       localStorage.setItem('updates-filterInvoicedStatus', JSON.stringify(filterInvoicedStatus))
       localStorage.setItem('updates-filterPaidStatus', JSON.stringify(filterPaidStatus))
       localStorage.setItem('updates-filterBelongYear', JSON.stringify(filterBelongYear))
     }
-  }, [filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear])
+  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear])
 
   // 任务对话框状态
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
@@ -336,6 +344,18 @@ export default function UpdatesPage() {
     return <Badge variant="secondary" className="text-xs">{labels[type]}: {count}/{total}</Badge>
   }
 
+  // 辅助函数：获取项目状态的文本
+  const getProjectStatusText = (status: string) => {
+    switch (status) {
+      case 'active': return '跟进中'
+      case 'won': return '已成交'
+      case 'lost': return '已丢失'
+      case 'on_hold': return '暂停'
+      case 'archived': return '已归档'
+      default: return status
+    }
+  }
+
   // 过滤项目
   const filteredProjects = projects.filter(project => {
     // 排除回款已完成的项目
@@ -351,6 +371,13 @@ export default function UpdatesPage() {
       const projectName = project.name?.toLowerCase() || ''
 
       if (!projectName.includes(keyword)) {
+        return false
+      }
+    }
+
+    // 项目状态筛选
+    if (filterProjectStatus.length > 0) {
+      if (!filterProjectStatus.includes(project.status)) {
         return false
       }
     }
@@ -463,10 +490,10 @@ export default function UpdatesPage() {
           >
             <Filter className="w-4 h-4 mr-2" />
             筛选
-            {(filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
+            {(filterProjectStatus.length > 0 || filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
               filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0) && (
               <Badge variant="secondary" className="ml-2 bg-zinc-900 text-white">
-                {filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length}
+                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length}
               </Badge>
             )}
           </Button>
@@ -504,6 +531,7 @@ export default function UpdatesPage() {
                           {project.belong_year && (
                             <span className="text-xs text-zinc-500 font-medium">{project.belong_year}年</span>
                           )}
+                          <span className="text-xs text-zinc-500 font-medium">{getProjectStatusText(project.status)}</span>
                           {project.value && (
                             <span className="text-xs text-zinc-500">¥{project.value.toLocaleString()}</span>
                           )}
@@ -772,6 +800,7 @@ export default function UpdatesPage() {
               <DialogTitle className="text-lg font-semibold">筛选条件</DialogTitle>
               <Button
                 onClick={() => {
+                  setFilterProjectStatus([])
                   setFilterContractStatus([])
                   setFilterAcceptedStatus([])
                   setFilterInvoicedStatus([])
@@ -788,7 +817,37 @@ export default function UpdatesPage() {
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-6 gap-4">
+            {/* 项目状态 */}
+            <div>
+              <Label className="text-xs font-medium text-zinc-700 mb-2 block">项目状态</Label>
+              <div className="space-y-1.5">
+                {[
+                  { value: 'active', label: '跟进中' },
+                  { value: 'won', label: '已成交' },
+                  { value: 'lost', label: '已丢失' },
+                  { value: 'on_hold', label: '暂停' },
+                  { value: 'archived', label: '已归档' }
+                ].map(status => (
+                  <label key={status.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterProjectStatus.includes(status.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFilterProjectStatus([...filterProjectStatus, status.value])
+                        } else {
+                          setFilterProjectStatus(filterProjectStatus.filter(s => s !== status.value))
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
+                    />
+                    <span className="text-zinc-700">{status.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* 签约状态 */}
             <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">签约状态</Label>

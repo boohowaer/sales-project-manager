@@ -64,7 +64,15 @@ export default function ProjectsPage() {
   const [selectedProjectValue, setSelectedProjectValue] = useState<number | null>(null)
   const [selectedProjectSettlements, setSelectedProjectSettlements] = useState<any[]>([])
 
-  // 筛选状态 - 从localStorage恢复
+  // 筛选状态 - 从localStorage恢复（默认包含已归档状态，确保已归档项目可见）
+  const [filterProjectStatus, setFilterProjectStatus] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('projects-filterProjectStatus')
+      // 如果没有保存的筛选条件，默认不筛选任何状态（显示所有状态，包括已归档）
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
   const [filterContractStatus, setFilterContractStatus] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('projects-filterContractStatus')
@@ -105,13 +113,14 @@ export default function ProjectsPage() {
   // 保存筛选器状态到localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      localStorage.setItem('projects-filterProjectStatus', JSON.stringify(filterProjectStatus))
       localStorage.setItem('projects-filterContractStatus', JSON.stringify(filterContractStatus))
       localStorage.setItem('projects-filterAcceptedStatus', JSON.stringify(filterAcceptedStatus))
       localStorage.setItem('projects-filterInvoicedStatus', JSON.stringify(filterInvoicedStatus))
       localStorage.setItem('projects-filterPaidStatus', JSON.stringify(filterPaidStatus))
       localStorage.setItem('projects-filterBelongYear', JSON.stringify(filterBelongYear))
     }
-  }, [filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear])
+  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear])
 
   // 任务对话框状态
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
@@ -352,18 +361,27 @@ export default function ProjectsPage() {
       case 'won': return 'success'
       case 'lost': return 'destructive'
       case 'on_hold': return 'secondary'
+      case 'archived': return 'outline'
       default: return 'default'
     }
   }
 
   const getStatusText2 = (status: string) => {
     switch (status) {
-      case 'active': return '进行中'
+      case 'active': return '跟进中'
       case 'won': return '已成交'
       case 'lost': return '已丢失'
       case 'on_hold': return '暂停'
+      case 'archived': return '已归档'
       default: return status
     }
+  }
+
+  // 辅助函数：根据验收/开票/回款状态获取标签颜色
+  const getSettlementTagColor = (count: number, total: number) => {
+    if (total === 0) return 'bg-amber-100 text-amber-700' // 无结算段
+    if (count === total) return 'bg-emerald-100 text-emerald-700' // 已完成
+    return 'bg-amber-100 text-amber-700' // 未完成或部分完成
   }
 
   const filteredProjects = projects.filter(project => {
@@ -374,6 +392,13 @@ export default function ProjectsPage() {
       const customerName = project.customers?.name?.toLowerCase() || ''
 
       if (!projectName.includes(keyword) && !customerName.includes(keyword)) {
+        return false
+      }
+    }
+
+    // 项目状态筛选
+    if (filterProjectStatus.length > 0) {
+      if (!filterProjectStatus.includes(project.status)) {
         return false
       }
     }
@@ -536,10 +561,10 @@ export default function ProjectsPage() {
           >
             <Filter className="w-3.5 h-3.5 mr-1.5" />
             筛选
-            {(filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
+            {(filterProjectStatus.length > 0 || filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
               filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0) && (
               <Badge variant="secondary" className="ml-1. bg-zinc-900 text-white text-xs h-4">
-                {filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length}
+                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length}
               </Badge>
             )}
           </Button>
@@ -571,6 +596,7 @@ export default function ProjectsPage() {
               <DialogTitle className="text-lg font-semibold">筛选条件</DialogTitle>
               <Button
                 onClick={() => {
+                  setFilterProjectStatus([])
                   setFilterContractStatus([])
                   setFilterAcceptedStatus([])
                   setFilterInvoicedStatus([])
@@ -587,7 +613,37 @@ export default function ProjectsPage() {
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-6 gap-4">
+            {/* 项目状态 */}
+            <div>
+              <Label className="text-xs font-medium text-zinc-700 mb-2 block">项目状态</Label>
+              <div className="space-y-1.5">
+                {[
+                  { value: 'active', label: '跟进中' },
+                  { value: 'won', label: '已成交' },
+                  { value: 'lost', label: '已丢失' },
+                  { value: 'on_hold', label: '暂停' },
+                  { value: 'archived', label: '已归档' }
+                ].map(status => (
+                  <label key={status.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterProjectStatus.includes(status.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFilterProjectStatus([...filterProjectStatus, status.value])
+                        } else {
+                          setFilterProjectStatus(filterProjectStatus.filter(s => s !== status.value))
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
+                    />
+                    <span className="text-zinc-700">{status.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* 签约状态 */}
             <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">签约状态</Label>
@@ -783,10 +839,11 @@ export default function ProjectsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">进行中</SelectItem>
+                      <SelectItem value="active">跟进中</SelectItem>
                       <SelectItem value="won">已成交</SelectItem>
                       <SelectItem value="lost">已丢失</SelectItem>
                       <SelectItem value="on_hold">暂停</SelectItem>
+                      <SelectItem value="archived">已归档</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -984,13 +1041,13 @@ export default function ProjectsPage() {
                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[11px] rounded-full font-medium">✓ 已签合同</span>
                   )}
                   {/* 验收、开票、回款状态 */}
-                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] rounded-full font-medium">
+                  <span className={`px-2 py-0.5 text-[11px] rounded-full font-medium ${getSettlementTagColor(project.settlement_summary?.accepted || 0, project.settlement_summary?.total || 0)}`}>
                     验收: {project.settlement_summary?.accepted || 0}/{project.settlement_summary?.total || 0}
                   </span>
-                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] rounded-full font-medium">
+                  <span className={`px-2 py-0.5 text-[11px] rounded-full font-medium ${getSettlementTagColor(project.settlement_summary?.invoiced || 0, project.settlement_summary?.total || 0)}`}>
                     开票: {project.settlement_summary?.invoiced || 0}/{project.settlement_summary?.total || 0}
                   </span>
-                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[11px] rounded-full font-medium">
+                  <span className={`px-2 py-0.5 text-[11px] rounded-full font-medium ${getSettlementTagColor(project.settlement_summary?.paid || 0, project.settlement_summary?.total || 0)}`}>
                     回款: {project.settlement_summary?.paid || 0}/{project.settlement_summary?.total || 0}
                   </span>
                 </div>

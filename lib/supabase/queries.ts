@@ -276,22 +276,45 @@ export async function getTasksByProject(projectId: string): Promise<Task[]> {
   return data || []
 }
 
-export async function getUpcomingTasks(supabase?: any, days: number = 7): Promise<Task[]> {
+export async function getUpcomingTasks(supabase?: any, days: number = 7): Promise<{
+  overdue: Task[],
+  upcoming: Task[]
+}> {
   const client = supabase || await createClient()
   const now = new Date()
-  const future = new Date()
-  future.setDate(future.getDate() + days)
 
-  const { data, error } = await client
+  // 获取已过期任务（截止日期早于现在，不管在不在本周）
+  const { data: overdueData, error: overdueError } = await client
     .from('tasks')
     .select('*, projects(*, customers(*))')
-    .gte('due_date', now.toISOString())
-    .lte('due_date', future.toISOString())
+    .lt('due_date', now.toISOString())
     .neq('status', 'completed')
     .order('due_date', { ascending: true })
 
-  if (error) throw error
-  return data || []
+  if (overdueError) throw overdueError
+
+  // 获取本周即将到期任务（截止日期从现在到本周日结束）
+  const weekEnd = new Date(now)
+  const dayOfWeek = weekEnd.getDay()  // 0是周日，1-6是周一到周六
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
+  weekEnd.setDate(weekEnd.getDate() + daysUntilSunday)
+  // 设置为周日的23:59:59，确保包含周日的任务
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const { data: upcomingData, error: upcomingError } = await client
+    .from('tasks')
+    .select('*, projects(*, customers(*))')
+    .gte('due_date', now.toISOString())
+    .lte('due_date', weekEnd.toISOString())
+    .neq('status', 'completed')
+    .order('due_date', { ascending: true })
+
+  if (upcomingError) throw upcomingError
+
+  return {
+    overdue: overdueData || [],
+    upcoming: upcomingData || []
+  }
 }
 
 export async function createTask(task: TaskInsert): Promise<Task> {
@@ -551,18 +574,30 @@ export async function getDashboardStats(supabase?: any) {
 
   const todayTasks = todayTasksData?.length || 0
 
-  // 获取本周到期任务
+  // 获取本周到期任务（到本周日结束，但不包括今日任务）
   const weekEnd = new Date(today)
-  weekEnd.setDate(weekEnd.getDate() + 7)
+  const dayOfWeek = weekEnd.getDay()  // 0是周日，1-6是周一到周六
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
+  weekEnd.setDate(weekEnd.getDate() + daysUntilSunday)
+  // 设置为周日的23:59:59，确保包含周日的任务
+  weekEnd.setHours(23, 59, 59, 999)
+
+  // 获取今天开始的时间（用于排除今日任务）
+  const todayStart = new Date(today)
+  todayStart.setHours(0, 0, 0, 0)
+
+  // 获取明天开始的时间
+  const tomorrowStart = new Date(todayStart)
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
 
   const { data: weekTasksData, error: weekError } = await client
     .from('tasks')
     .select('id')
-    .gte('due_date', today.toISOString())
+    .or(`due_date.lt.${today.toISOString()},due_date.gte.${tomorrowStart.toISOString()}`)
     .lte('due_date', weekEnd.toISOString())
     .neq('status', 'completed')
 
-  console.log('仪表盘统计 - 本周任务数据:', weekTasksData)
+  console.log('仪表盘统计 - 本周任务数据（不包括今日）:', weekTasksData)
 
   const weekTasks = weekTasksData?.length || 0
 
