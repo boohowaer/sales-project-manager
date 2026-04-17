@@ -11,10 +11,10 @@ import { toast } from 'react-hot-toast'
 
 export default function SettingsPage() {
   const [fontFamily, setFontFamily] = useState('Poppins, Inter')
-  const [fontSize, setFontSize] = useState(14)
-  const [theme, setTheme] = useState('light')
+  const [fontSize, setFontSize] = useState(15)
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [reminderAdvanceHours, setReminderAdvanceHours] = useState(24)
+  const [milestoneReminderDays, setMilestoneReminderDays] = useState(7)
   const [salesGoal, setSalesGoal] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -37,9 +37,9 @@ export default function SettingsPage() {
       if (settings) {
         setFontFamily(settings.font_family)
         setFontSize(settings.font_size)
-        setTheme(settings.theme)
         setReminderEnabled(settings.reminder_enabled)
         setReminderAdvanceHours(settings.reminder_advance_hours)
+        setMilestoneReminderDays(settings.milestone_reminder_days ?? 7)
         setSalesGoal(settings.sales_goal ? settings.sales_goal.toString() : '')
       }
     } catch (error: any) {
@@ -55,15 +55,16 @@ export default function SettingsPage() {
       await updateUserSettings({
         font_family: fontFamily,
         font_size: fontSize,
-        theme: theme as any,
         reminder_enabled: reminderEnabled,
         reminder_advance_hours: reminderAdvanceHours,
+        milestone_reminder_days: milestoneReminderDays,
         sales_goal: salesGoal ? parseFloat(salesGoal) : null
       })
       toast.success('设置保存成功')
-      // 保存成功后应用字体设置
+      // 保存成功后应用字体设置并更新缓存
       document.documentElement.style.fontFamily = fontFamily
       document.documentElement.style.fontSize = `${fontSize}px`
+      localStorage.setItem('fontSettings', JSON.stringify({ fontFamily, fontSize }))
     } catch (error: any) {
       toast.error(error.message || '保存设置失败')
     } finally {
@@ -78,12 +79,6 @@ export default function SettingsPage() {
     { value: 'sans-serif', label: '无衬线字体' },
     { value: 'serif', label: '衬线字体' },
     { value: 'monospace', label: '等宽字体' }
-  ]
-
-  const themes = [
-    { value: 'light', label: '浅色' },
-    { value: 'dark', label: '深色' },
-    { value: 'system', label: '跟随系统' }
   ]
 
   // 加载时显示骨架屏
@@ -169,7 +164,7 @@ export default function SettingsPage() {
           <Card className="rounded-2xl shadow-sm border-0 bg-white">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">外观设置</CardTitle>
-              <CardDescription className="text-sm text-zinc-500">自定义应用的字体和主题</CardDescription>
+              <CardDescription className="text-sm text-zinc-500">自定义应用的字体</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -208,22 +203,6 @@ export default function SettingsPage() {
                   <span>20px（大）</span>
                 </div>
               </div>
-
-              <div>
-                <Label htmlFor="theme" className="text-sm font-medium text-zinc-700">主题</Label>
-                <Select value={theme} onValueChange={setTheme}>
-                  <SelectTrigger id="theme" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {themes.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </CardContent>
           </Card>
 
@@ -238,7 +217,7 @@ export default function SettingsPage() {
                 <div>
                   <Label htmlFor="reminder-enabled" className="text-sm font-medium text-zinc-700">启用提醒</Label>
                   <p className="text-sm text-zinc-500 mt-1">
-                    在应用内显示即将到期的任务提醒
+                    在首页信息提醒中显示即将到期的关注节点和任务
                   </p>
                 </div>
                 <input
@@ -251,25 +230,46 @@ export default function SettingsPage() {
               </div>
 
               {reminderEnabled && (
-                <div>
-                  <Label htmlFor="reminder-advance" className="text-sm font-medium text-zinc-700">提前提醒时间</Label>
-                  <Select value={reminderAdvanceHours.toString()} onValueChange={(v) => setReminderAdvanceHours(parseInt(v))}>
-                    <SelectTrigger id="reminder-advance" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1小时前</SelectItem>
-                      <SelectItem value="6">6小时前</SelectItem>
-                      <SelectItem value="12">12小时前</SelectItem>
-                      <SelectItem value="24">1天前</SelectItem>
-                      <SelectItem value="48">2天前</SelectItem>
-                      <SelectItem value="168">1周前</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-zinc-500 mt-2">
-                    在任务到期前多久显示提醒
-                  </p>
-                </div>
+                <>
+                  <div>
+                    <Label htmlFor="reminder-advance" className="text-sm font-medium text-zinc-700">任务提醒时间范围</Label>
+                    <Select value={reminderAdvanceHours.toString()} onValueChange={(v) => setReminderAdvanceHours(parseInt(v))}>
+                      <SelectTrigger id="reminder-advance" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1小时前</SelectItem>
+                        <SelectItem value="6">6小时前</SelectItem>
+                        <SelectItem value="12">12小时前</SelectItem>
+                        <SelectItem value="24">1天前</SelectItem>
+                        <SelectItem value="48">2天前</SelectItem>
+                        <SelectItem value="168">1周前</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-zinc-500 mt-2">
+                      在任务到期前多久显示提醒
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="milestone-reminder" className="text-sm font-medium text-zinc-700">关注节点提醒范围</Label>
+                    <Select value={milestoneReminderDays.toString()} onValueChange={(v) => setMilestoneReminderDays(parseInt(v))}>
+                      <SelectTrigger id="milestone-reminder" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1天内</SelectItem>
+                        <SelectItem value="3">3天内</SelectItem>
+                        <SelectItem value="7">7天内</SelectItem>
+                        <SelectItem value="14">2周内</SelectItem>
+                        <SelectItem value="28">4周内</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-zinc-500 mt-2">
+                      信息提醒面板中显示多少天内的项目关注节点
+                    </p>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

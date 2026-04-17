@@ -276,14 +276,15 @@ export async function getTasksByProject(projectId: string): Promise<Task[]> {
   return data || []
 }
 
-export async function getUpcomingTasks(supabase?: any, days: number = 7): Promise<{
+export async function getUpcomingTasks(supabase?: any, hours: number = 24): Promise<{
   overdue: Task[],
-  upcoming: Task[]
+  upcoming: Task[],
+  thisWeek: Task[]
 }> {
   const client = supabase || await createClient()
   const now = new Date()
 
-  // 获取已过期任务（截止日期早于现在，不管在不在本周）
+  // 获取已过期任务
   const { data: overdueData, error: overdueError } = await client
     .from('tasks')
     .select('*, projects(*, customers(*))')
@@ -293,15 +294,27 @@ export async function getUpcomingTasks(supabase?: any, days: number = 7): Promis
 
   if (overdueError) throw overdueError
 
-  // 获取本周即将到期任务（截止日期从现在到本周日结束）
-  const weekEnd = new Date(now)
-  const dayOfWeek = weekEnd.getDay()  // 0是周日，1-6是周一到周六
-  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
-  weekEnd.setDate(weekEnd.getDate() + daysUntilSunday)
-  // 设置为周日的23:59:59，确保包含周日的任务
-  weekEnd.setHours(23, 59, 59, 999)
+  // 获取即将到期任务（基于提前提醒小时数）
+  const upcomingEnd = new Date(now.getTime() + hours * 60 * 60 * 1000)
 
   const { data: upcomingData, error: upcomingError } = await client
+    .from('tasks')
+    .select('*, projects(*, customers(*))')
+    .gte('due_date', now.toISOString())
+    .lte('due_date', upcomingEnd.toISOString())
+    .neq('status', 'completed')
+    .order('due_date', { ascending: true })
+
+  if (upcomingError) throw upcomingError
+
+  // 获取本周任务（到本周日结束）
+  const weekEnd = new Date(now)
+  const dayOfWeek = weekEnd.getDay()
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
+  weekEnd.setDate(weekEnd.getDate() + daysUntilSunday)
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const { data: thisWeekData, error: thisWeekError } = await client
     .from('tasks')
     .select('*, projects(*, customers(*))')
     .gte('due_date', now.toISOString())
@@ -309,11 +322,12 @@ export async function getUpcomingTasks(supabase?: any, days: number = 7): Promis
     .neq('status', 'completed')
     .order('due_date', { ascending: true })
 
-  if (upcomingError) throw upcomingError
+  if (thisWeekError) throw thisWeekError
 
   return {
     overdue: overdueData || [],
-    upcoming: upcomingData || []
+    upcoming: upcomingData || [],
+    thisWeek: thisWeekData || []
   }
 }
 
@@ -380,6 +394,7 @@ export async function getUserSettings(): Promise<UserSettings | null> {
         theme: 'light',
         reminder_enabled: true,
         reminder_advance_hours: 24,
+        milestone_reminder_days: 7,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }

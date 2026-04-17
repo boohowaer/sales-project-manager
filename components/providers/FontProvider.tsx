@@ -11,12 +11,12 @@ interface FontContextType {
 
 const FontContext = createContext<FontContextType>({
   fontFamily: 'Poppins, Inter',
-  fontSize: 14
+  fontSize: 15
 })
 
 export function FontProvider({ children }: { children: React.ReactNode }) {
   const [fontFamily, setFontFamily] = useState('Poppins, Inter')
-  const [fontSize, setFontSize] = useState(14)
+  const [fontSize, setFontSize] = useState(15)
   const [loaded, setLoaded] = useState(false)
 
   // 应用字体到文档
@@ -33,18 +33,18 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
         const settings = await getUserSettings()
         if (settings) {
           const font = settings.font_family || 'Poppins, Inter'
-          const size = settings.font_size || 14
+          const size = settings.font_size || 15
 
           setFontFamily(font)
           setFontSize(size)
 
-          // 应用到根元素
+          // 应用到根元素并缓存到 localStorage
           applyFontSettings(font, size)
+          localStorage.setItem('fontSettings', JSON.stringify({ fontFamily: font, fontSize: size }))
         }
       } catch (error) {
         console.error('加载字体设置失败:', error)
-        // 使用默认值
-        applyFontSettings('Poppins, Inter', 14)
+        applyFontSettings('Poppins, Inter', 15)
       } finally {
         setLoaded(true)
       }

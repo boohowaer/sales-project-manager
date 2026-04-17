@@ -150,6 +150,7 @@ export type Database = {
           theme: 'light' | 'dark' | 'system'
           reminder_enabled: boolean
           reminder_advance_hours: number
+          milestone_reminder_days: number
           sales_goal: number | null
           created_at: string
           updated_at: string
@@ -162,6 +163,7 @@ export type Database = {
           theme?: 'light' | 'dark' | 'system'
           reminder_enabled?: boolean
           reminder_advance_hours?: number
+          milestone_reminder_days?: number
           sales_goal?: number | null
           created_at?: string
           updated_at?: string
@@ -174,6 +176,7 @@ export type Database = {
           theme?: 'light' | 'dark' | 'system'
           reminder_enabled?: boolean
           reminder_advance_hours?: number
+          milestone_reminder_days?: number
           sales_goal?: number | null
           created_at?: string
           updated_at?: string

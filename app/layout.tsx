@@ -22,7 +22,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className="h-full antialiased">
+    <html lang="zh-CN" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var s = localStorage.getItem('fontSettings');
+            if (s) {
+              var f = JSON.parse(s);
+              if (f.fontFamily) document.documentElement.style.fontFamily = f.fontFamily;
+              if (f.fontSize) document.documentElement.style.fontSize = f.fontSize + 'px';
+            } else {
+              document.documentElement.style.fontSize = '15px';
+            }
+          } catch(e) {
+            document.documentElement.style.fontSize = '15px';
+          }
+        `}} />
+      </head>
       <body className={`${poppins.variable} min-h-full flex flex-col`}>
         <FontProvider>
           {children}
