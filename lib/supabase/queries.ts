@@ -441,6 +441,11 @@ export async function getDashboardStats(supabase?: any) {
   // 获取当前年份
   const currentYear = new Date().getFullYear()
 
+  // 本月起止
+  const now2 = new Date()
+  const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1)
+  const monthEnd = new Date(now2.getFullYear(), now2.getMonth() + 1, 1)
+
   // 获取时间范围
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -460,7 +465,7 @@ export async function getDashboardStats(supabase?: any) {
   const [projectsResult, tasksResult] = await Promise.all([
     client
       .from('projects')
-      .select('id, status, value, probability, has_start_notice, contract_signed')
+      .select('id, status, value, probability, has_start_notice, contract_signed, created_at')
       .eq('belong_year', currentYear),
     client
       .from('tasks')
@@ -482,7 +487,7 @@ export async function getDashboardStats(supabase?: any) {
   const projectIds = allProjects?.map(p => p.id) || []
   const { data: allSettlements } = await client
     .from('settlement_stages')
-    .select('project_id, amount, accepted, invoiced, paid')
+    .select('project_id, amount, accepted, invoiced, paid, accepted_date, invoiced_date, paid_date')
     .in('project_id', projectIds)
 
   // 计算已验收、已开票、已回款金额
@@ -535,6 +540,30 @@ export async function getDashboardStats(supabase?: any) {
     })
   }
 
+  // 计算本月新增
+  const isThisMonth = (dateStr: string | null) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    return d >= monthStart && d < monthEnd
+  }
+
+  const monthlyTotalValue = allProjects?.filter(p => isThisMonth(p.created_at)).reduce((sum, p) => sum + (p.value || 0), 0) || 0
+  const monthlyExpectedValue = allProjects?.filter(p => isThisMonth(p.created_at)).reduce((sum, p) => sum + ((p.value || 0) * (p.probability || 0) / 100), 0) || 0
+  const monthlySigned = allProjects?.filter(p => isThisMonth(p.created_at) && (p.has_start_notice || p.contract_signed)).reduce((sum, p) => sum + (p.value || 0), 0) || 0
+
+  let monthlyAccepted = 0
+  let monthlyInvoiced = 0
+  let monthlyPaid = 0
+  if (allSettlements) {
+    allSettlements.forEach(s => {
+      const project = allProjects?.find(p => p.id === s.project_id)
+      const stageAmt = s.amount || 0
+      if (isThisMonth(s.accepted_date)) monthlyAccepted += stageAmt
+      if (isThisMonth(s.invoiced_date)) monthlyInvoiced += stageAmt
+      if (isThisMonth(s.paid_date)) monthlyPaid += stageAmt
+    })
+  }
+
   // 计算今日和本周任务数（优化：从已获取的 allTasks 计算，无需额外查询）
   const todayTasks = allTasks.filter(t => {
     if (!t.due_date || t.status === 'completed') return false
@@ -561,7 +590,13 @@ export async function getDashboardStats(supabase?: any) {
     invoicedAmount,
     paidAmount,
     todayTasks,
-    weekTasks
+    weekTasks,
+    monthlyTotalValue,
+    monthlyExpectedValue,
+    monthlySigned,
+    monthlyAccepted,
+    monthlyInvoiced,
+    monthlyPaid,
   }
 }
 

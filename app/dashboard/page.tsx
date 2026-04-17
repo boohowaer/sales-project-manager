@@ -101,12 +101,12 @@ export default function DashboardPage() {
   }
 
   const metrics = [
-    { label: '项目总价值', displayValue: `¥${(stats.totalValue || 0).toLocaleString()}`, pct: pct(stats.totalValue || 0), desc: '本年度所有项目', icon: <TrendingUp className="w-4 h-4" /> },
-    { label: '预期收入', displayValue: `¥${(stats.expectedValue || 0).toLocaleString()}`, pct: pct(stats.expectedValue || 0), desc: '按概率加权', icon: <TrendingUp className="w-4 h-4" />, tooltip: true },
-    { label: '已签约', displayValue: `¥${(stats.signedWithStart || 0).toLocaleString()}`, pct: pct(stats.signedWithStart || 0), desc: '含合同 & 开工函', icon: <FileCheck className="w-4 h-4" /> },
-    { label: '已验收', displayValue: `¥${(stats.acceptedAmount || 0).toLocaleString()}`, pct: pct(stats.acceptedAmount || 0), desc: '基于结算段', icon: <CheckCircle className="w-4 h-4" /> },
-    { label: '已开票', displayValue: `¥${(stats.invoicedAmount || 0).toLocaleString()}`, pct: pct(stats.invoicedAmount || 0), desc: '基于结算段', icon: <Receipt className="w-4 h-4" /> },
-    { label: '已回款', displayValue: `¥${(stats.paidAmount || 0).toLocaleString()}`, pct: pct(stats.paidAmount || 0), desc: '基于结算段', icon: <DollarSign className="w-4 h-4" /> },
+    { label: '项目总价值', displayValue: `¥${(stats.totalValue || 0).toLocaleString()}`, pct: pct(stats.totalValue || 0), desc: '本年度所有项目', icon: <TrendingUp className="w-4 h-4" />, monthly: stats.monthlyTotalValue || 0 },
+    { label: '预期收入', displayValue: `¥${(stats.expectedValue || 0).toLocaleString()}`, pct: pct(stats.expectedValue || 0), desc: '按概率加权', icon: <TrendingUp className="w-4 h-4" />, tooltip: true, monthly: stats.monthlyExpectedValue || 0 },
+    { label: '已签约', displayValue: `¥${(stats.signedWithStart || 0).toLocaleString()}`, pct: pct(stats.signedWithStart || 0), desc: '含合同 & 开工函', icon: <FileCheck className="w-4 h-4" />, monthly: stats.monthlySigned || 0 },
+    { label: '已验收', displayValue: `¥${(stats.acceptedAmount || 0).toLocaleString()}`, pct: pct(stats.acceptedAmount || 0), desc: '基于结算段', icon: <CheckCircle className="w-4 h-4" />, monthly: stats.monthlyAccepted || 0 },
+    { label: '已开票', displayValue: `¥${(stats.invoicedAmount || 0).toLocaleString()}`, pct: pct(stats.invoicedAmount || 0), desc: '基于结算段', icon: <Receipt className="w-4 h-4" />, monthly: stats.monthlyInvoiced || 0 },
+    { label: '已回款', displayValue: `¥${(stats.paidAmount || 0).toLocaleString()}`, pct: pct(stats.paidAmount || 0), desc: '基于结算段', icon: <DollarSign className="w-4 h-4" />, monthly: stats.monthlyPaid || 0 },
   ]
 
   return (
@@ -128,14 +128,14 @@ export default function DashboardPage() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-2">
+                <div className="flex items-center gap-1.5 mb-1.5">
                   <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">{m.label}</span>
                   <span className="text-zinc-300">{m.icon}</span>
                 </div>
                 <div className="text-2xl font-semibold text-zinc-900 tracking-tight leading-none mb-1">
                   {m.displayValue}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-zinc-400">
+                <div className="flex items-center gap-1 text-xs text-zinc-400 mb-1">
                   {m.desc}
                   {m.tooltip && (
                     <div className="relative group">
@@ -148,6 +148,9 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   )}
+                </div>
+                <div className="text-xs text-zinc-400">
+                  本月新增 <span className="text-zinc-600 font-medium">{m.monthly > 0 ? `¥${Math.round(m.monthly).toLocaleString()}` : '-'}</span>
                 </div>
               </div>
             </CardContent>
