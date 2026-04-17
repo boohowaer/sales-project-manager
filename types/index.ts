@@ -61,6 +61,7 @@ export type Database = {
           contract_signed: boolean
           settlement_stages: number
           belong_year: number | null
+          signed_at: string | null
           created_at: string
           updated_at: string
         }
@@ -76,6 +77,7 @@ export type Database = {
           expected_close_date?: string | null
           actual_close_date?: string | null
           probability?: number
+          signed_at?: string | null
           created_at?: string
           updated_at?: string
           belong_year?: number | null
@@ -92,6 +94,7 @@ export type Database = {
           expected_close_date?: string | null
           actual_close_date?: string | null
           probability?: number
+          signed_at?: string | null
           created_at?: string
           updated_at?: string
           belong_year?: number | null

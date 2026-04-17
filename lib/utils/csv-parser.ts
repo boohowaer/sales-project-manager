@@ -379,7 +379,7 @@ export function validateProjectCSV(
     }
 
     // 预期关闭日期 (可选)
-    const expectedCloseDateIndex = cleanHeaders.indexOf('预期关闭日期')
+    const expectedCloseDateIndex = cleanHeaders.indexOf('预期成交日期')
     if (expectedCloseDateIndex !== -1 && row[expectedCloseDateIndex]) {
       const expectedCloseDate = row[expectedCloseDateIndex]!.trim()
       const normalizedDate = parseAndNormalizeDate(expectedCloseDate)
@@ -418,6 +418,19 @@ export function validateProjectCSV(
         rowHasError = true
       } else {
         project.belong_year = year
+      }
+    }
+
+    // 成交日期 (可选)
+    const signedAtIndex = cleanHeaders.indexOf('成交日期')
+    if (signedAtIndex !== -1 && row[signedAtIndex]) {
+      const signedAt = row[signedAtIndex]!.trim()
+      const normalizedDate = parseAndNormalizeDate(signedAt)
+      if (!normalizedDate) {
+        errors.push({ row: rowNum, field: '成交日期', message: '成交日期格式不正确' })
+        rowHasError = true
+      } else {
+        project.signed_at = normalizedDate
       }
     }
 

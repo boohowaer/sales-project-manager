@@ -465,7 +465,7 @@ export async function getDashboardStats(supabase?: any) {
   const [projectsResult, tasksResult] = await Promise.all([
     client
       .from('projects')
-      .select('id, status, value, probability, has_start_notice, contract_signed, created_at')
+      .select('id, status, value, probability, has_start_notice, contract_signed, created_at, signed_at')
       .eq('belong_year', currentYear),
     client
       .from('tasks')
@@ -549,7 +549,7 @@ export async function getDashboardStats(supabase?: any) {
 
   const monthlyTotalValue = allProjects?.filter(p => isThisMonth(p.created_at)).reduce((sum, p) => sum + (p.value || 0), 0) || 0
   const monthlyExpectedValue = allProjects?.filter(p => isThisMonth(p.created_at)).reduce((sum, p) => sum + ((p.value || 0) * (p.probability || 0) / 100), 0) || 0
-  const monthlySigned = allProjects?.filter(p => isThisMonth(p.created_at) && (p.has_start_notice || p.contract_signed)).reduce((sum, p) => sum + (p.value || 0), 0) || 0
+  const monthlySigned = allProjects?.filter(p => p.signed_at && isThisMonth(p.signed_at)).reduce((sum, p) => sum + (p.value || 0), 0) || 0
 
   let monthlyAccepted = 0
   let monthlyInvoiced = 0

@@ -151,6 +151,7 @@ export default function ProjectsPage() {
     probability: 50,
     start_date: '',
     expected_close_date: '',
+    signed_at: '',
     has_start_notice: false,
     contract_signed: false,
     settlement_stages: 1,
@@ -219,6 +220,7 @@ export default function ProjectsPage() {
           expected_close_date: formData.expected_close_date || null,
           has_start_notice: formData.has_start_notice,
           contract_signed: formData.contract_signed,
+          signed_at: formData.signed_at || null,
           settlement_stages: settlementStagesNumber,
           belong_year: formData.belong_year ? parseInt(formData.belong_year) : null
         }
@@ -254,6 +256,7 @@ export default function ProjectsPage() {
           actual_close_date: null,
           has_start_notice: formData.has_start_notice,
           contract_signed: formData.contract_signed,
+          signed_at: formData.signed_at || null,
           settlement_stages: settlementStagesNumber,
           belong_year: formData.belong_year ? parseInt(formData.belong_year) : null
         }
@@ -276,6 +279,7 @@ export default function ProjectsPage() {
         probability: 50,
         start_date: '',
         expected_close_date: '',
+        signed_at: '',
         has_start_notice: false,
         contract_signed: false,
         settlement_stages: 1,
@@ -300,9 +304,10 @@ export default function ProjectsPage() {
       probability: project.probability,
       start_date: project.start_date || '',
       expected_close_date: project.expected_close_date || '',
+      signed_at: project.signed_at || '',
       has_start_notice: project.has_start_notice || false,
       contract_signed: project.contract_signed || false,
-      settlement_stages: 1, // 结算段数现在自动从结算段数量计算，表单中固定为1
+      settlement_stages: 1,
       belong_year: project.belong_year ? project.belong_year.toString() : ''
     })
     setEditingId(project.id)
@@ -949,7 +954,41 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* 第四行：合同状态 + 成功概率 */}
+              {/* 第四行：时间信息 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="start_date" className="text-sm font-medium text-zinc-700">开始日期</Label>
+                  <Input
+                    id="start_date"
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="expected_close_date" className="text-sm font-medium text-zinc-700">预期成交日期</Label>
+                  <Input
+                    id="expected_close_date"
+                    type="date"
+                    value={formData.expected_close_date}
+                    onChange={(e) => setFormData({ ...formData, expected_close_date: e.target.value })}
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="signed_at" className="text-sm font-medium text-zinc-700">成交日期</Label>
+                  <Input
+                    id="signed_at"
+                    type="date"
+                    value={formData.signed_at}
+                    onChange={(e) => setFormData({ ...formData, signed_at: e.target.value })}
+                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                  />
+                </div>
+              </div>
+
+              {/* 第五行：合同状态 + 成功概率 */}
               <div className="grid grid-cols-[auto_1fr] gap-6 mt-6">
                 <div>
                   <Label className="text-sm font-medium text-zinc-700 mb-2 block">合同状态</Label>
@@ -986,30 +1025,6 @@ export default function ProjectsPage() {
                     value={formData.probability}
                     onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })}
                     className="w-full h-2 accent-zinc-600"
-                  />
-                </div>
-              </div>
-
-              {/* 第五行：时间信息 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start_date" className="text-sm font-medium text-zinc-700">开始日期</Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="expected_close_date" className="text-sm font-medium text-zinc-700">预期成交日期</Label>
-                  <Input
-                    id="expected_close_date"
-                    type="date"
-                    value={formData.expected_close_date}
-                    onChange={(e) => setFormData({ ...formData, expected_close_date: e.target.value })}
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                   />
                 </div>
               </div>
@@ -1130,33 +1145,27 @@ export default function ProjectsPage() {
                 {project.description && (
                   <p className="text-xs text-zinc-500 mb-3 line-clamp-2">{project.description}</p>
                 )}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                  {project.value && (
-                    <div>
-                      <p className="text-zinc-500 text-[11px]">项目价值</p>
-                      <p className="font-semibold text-sm">¥{project.value.toLocaleString()}</p>
-                    </div>
-                  )}
+                <div className="grid grid-cols-5 gap-3 text-xs">
+                  <div>
+                    <p className="text-zinc-500 text-[11px]">项目价值</p>
+                    <p className="font-semibold text-sm">{project.value ? `¥${project.value.toLocaleString()}` : '-'}</p>
+                  </div>
                   <div>
                     <p className="text-zinc-500 text-[11px]">成功概率</p>
-                    <p className="font-semibold text-sm">{project.probability}%</p>
+                    <p className="font-semibold text-sm">{project.probability != null ? `${project.probability}%` : '-'}</p>
                   </div>
-                  {project.start_date && (
-                    <div>
-                      <p className="text-zinc-500 text-[11px]">开始日期</p>
-                      <p className="font-semibold text-sm">
-                        {new Date(project.start_date).toLocaleDateString('zh-CN')}
-                      </p>
-                    </div>
-                  )}
-                  {project.expected_close_date && (
-                    <div>
-                      <p className="text-zinc-500 text-[11px]">预期成交</p>
-                      <p className="font-semibold text-sm">
-                        {new Date(project.expected_close_date).toLocaleDateString('zh-CN')}
-                      </p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-zinc-500 text-[11px]">开始日期</p>
+                    <p className="font-semibold text-sm">{project.start_date ? new Date(project.start_date).toLocaleDateString('zh-CN') : '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 text-[11px]">预期成交</p>
+                    <p className="font-semibold text-sm">{project.expected_close_date ? new Date(project.expected_close_date).toLocaleDateString('zh-CN') : '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 text-[11px]">成交日期</p>
+                    <p className={`font-semibold text-sm ${project.signed_at ? 'text-emerald-600' : ''}`}>{project.signed_at ? new Date(project.signed_at).toLocaleDateString('zh-CN') : '-'}</p>
+                  </div>
                 </div>
                 {project.task_summary && project.task_summary.total > 0 && (
                   <div className="mt-3 pt-3 border-t border-zinc-100">

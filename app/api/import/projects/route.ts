@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
         has_start_notice: project.has_start_notice,
         contract_signed: project.contract_signed,
         belong_year: project.belong_year,
+        signed_at: project.signed_at || null,
         user_id: user.id
       }
     })

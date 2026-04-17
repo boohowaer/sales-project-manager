@@ -10,8 +10,8 @@ import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 
 function CircularProgress({ pct }: { pct: number }) {
-  const size = 140
-  const r = 54
+  const size = 160
+  const r = 62
   const circ = 2 * Math.PI * r
   const arcLength = 0.75 * circ
   const filled = Math.min(pct / 100, 1) * arcLength
@@ -121,7 +121,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         {metrics.map((m) => (
           <Card key={m.label} className="rounded-2xl border-0 bg-white shadow-sm overflow-visible">
-            <CardContent className="px-4 pt-4 pb-1 flex items-center gap-4 overflow-visible">
+            <CardContent className="px-4 pt-4 pb-0 flex items-center gap-4 overflow-visible min-h-[160px]">
               {m.pct !== null && (
                 <div className="shrink-0 -my-1">
                   <CircularProgress pct={m.pct} />
