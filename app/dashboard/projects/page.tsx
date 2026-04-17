@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getProjects, getCustomers, createProject, updateProject, deleteProject, getSettlementStages, createTask } from '@/lib/supabase/queries'
+import { getProjects, getCustomers, createProject, updateProject, deleteProject, getSettlementStages, createTask, getSettlementStagesBatch } from '@/lib/supabase/queries'
 import { SettlementStagesManager } from '@/components/projects/SettlementStagesManager'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -108,7 +108,15 @@ export default function ProjectsPage() {
     }
     return []
   })
+  const [filterMilestone, setFilterMilestone] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('projects-filterMilestone')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
+  const [settlementsMap, setSettlementsMap] = useState<Map<string, any[]>>(new Map())
 
   // 保存筛选器状态到localStorage
   useEffect(() => {
@@ -119,8 +127,9 @@ export default function ProjectsPage() {
       localStorage.setItem('projects-filterInvoicedStatus', JSON.stringify(filterInvoicedStatus))
       localStorage.setItem('projects-filterPaidStatus', JSON.stringify(filterPaidStatus))
       localStorage.setItem('projects-filterBelongYear', JSON.stringify(filterBelongYear))
+      localStorage.setItem('projects-filterMilestone', JSON.stringify(filterMilestone))
     }
-  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear])
+  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear, filterMilestone])
 
   // 任务对话框状态
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
@@ -167,6 +176,10 @@ export default function ProjectsPage() {
       ])
       setProjects(projectsData)
       setCustomers(customersData)
+
+      const projectIds = projectsData.map((p: any) => p.id)
+      const map = await getSettlementStagesBatch(projectIds)
+      setSettlementsMap(map)
     } catch (error: any) {
       console.error('加载数据失败:', error)
       toast.error('加载数据失败')
@@ -471,6 +484,44 @@ export default function ProjectsPage() {
       }
     }
 
+    // 关注节点筛选（未来30天 + 已逾期）
+    if (filterMilestone.length > 0) {
+      const today = new Date(new Date().toDateString())
+      const future30 = new Date(today)
+      future30.setDate(future30.getDate() + 30)
+      future30.setHours(23, 59, 59)
+      const stages = settlementsMap.get(project.id) || []
+
+      const matches = filterMilestone.some(type => {
+        if (type === '计划签约') {
+          if (!project.expected_close_date || project.contract_signed || project.has_start_notice) return false
+          const d = new Date(project.expected_close_date)
+          return d <= future30
+        }
+        if (type === '计划验收') {
+          return stages.some((s: any) => {
+            if (s.accepted || !s.planned_accepted_date) return false
+            return new Date(s.planned_accepted_date) <= future30
+          })
+        }
+        if (type === '计划开票') {
+          return stages.some((s: any) => {
+            if (s.invoiced || !s.planned_invoiced_date) return false
+            return new Date(s.planned_invoiced_date) <= future30
+          })
+        }
+        if (type === '计划回款') {
+          return stages.some((s: any) => {
+            if (s.paid || !s.planned_paid_date) return false
+            return new Date(s.planned_paid_date) <= future30
+          })
+        }
+        return false
+      })
+
+      if (!matches) return false
+    }
+
     return true
   })
 
@@ -535,12 +586,12 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">项目管理</h1>
-          <p className="mt-1 text-sm text-zinc-500">管理您的所有销售项目</p>
+          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">项目管理</h1>
+          <p className="mt-2 text-zinc-500 text-sm">管理您的所有销售项目</p>
         </div>
         <div className="flex gap-2 items-center">
           <div className="flex items-center gap-2">
@@ -556,31 +607,31 @@ export default function ProjectsPage() {
           <Button
             onClick={() => setFilterDialogOpen(true)}
             variant="outline"
-            className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50 h-8 text-sm"
+            className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50"
             size="sm"
           >
-            <Filter className="w-3.5 h-3.5 mr-1.5" />
+            <Filter className="w-4 h-4 mr-2" />
             筛选
             {(filterProjectStatus.length > 0 || filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
-              filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0) && (
-              <Badge variant="secondary" className="ml-1. bg-zinc-900 text-white text-xs h-4">
-                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length}
+              filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0 || filterMilestone.length > 0) && (
+              <Badge variant="secondary" className="ml-2 bg-zinc-900 text-white">
+                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length + filterMilestone.length}
               </Badge>
             )}
           </Button>
 
           <Button
             onClick={() => setImportDialogOpen(true)}
-            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full h-8 text-sm"
+            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm"
           >
-            <Upload className="w-3.5 h-3.5 mr-1.5" />
+            <Upload className="w-4 h-4 mr-2" />
             批量导入
           </Button>
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button disabled={customers.length === 0} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full h-8 text-sm">
-                <Plus className="w-3.5 h-3.5 mr-1.5" />
+              <Button disabled={customers.length === 0} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">
+                <Plus className="w-4 h-4 mr-2" />
                 添加项目
               </Button>
             </DialogTrigger>
@@ -592,7 +643,7 @@ export default function ProjectsPage() {
       <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
         <DialogContent className="max-w-4xl rounded-2xl shadow-xl border-0">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-2">
               <DialogTitle className="text-lg font-semibold">筛选条件</DialogTitle>
               <Button
                 onClick={() => {
@@ -602,10 +653,11 @@ export default function ProjectsPage() {
                   setFilterInvoicedStatus([])
                   setFilterPaidStatus([])
                   setFilterBelongYear([])
+                  setFilterMilestone([])
                 }}
                 variant="ghost"
                 size="sm"
-                className="text-zinc-500 hover:text-zinc-700 mr-2"
+                className="text-zinc-500 hover:text-zinc-700"
               >
                 <RotateCcw className="w-4 h-4 mr-1" />
                 清空筛选
@@ -613,7 +665,7 @@ export default function ProjectsPage() {
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-7 gap-4 px-2">
             {/* 项目状态 */}
             <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">项目状态</Label>
@@ -769,12 +821,36 @@ export default function ProjectsPage() {
                 )}
               </div>
             </div>
+
+            {/* 关注节点 */}
+            <div>
+              <Label className="text-xs font-medium text-zinc-700 mb-2 block">关注节点</Label>
+              <div className="space-y-1.5">
+                {['计划签约', '计划验收', '计划开票', '计划回款'].map(type => (
+                  <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterMilestone.includes(type)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFilterMilestone([...filterMilestone, type])
+                        } else {
+                          setFilterMilestone(filterMilestone.filter(s => s !== type))
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
+                    />
+                    <span className="text-zinc-700">{type}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end mt-4 pr-2">
             <Button
               onClick={() => setFilterDialogOpen(false)}
-              className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full"
+              className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full px-8"
             >
               确定
             </Button>
@@ -908,7 +984,7 @@ export default function ProjectsPage() {
                     min="0"
                     max="100"
                     value={formData.probability}
-                    onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })}
                     className="w-full h-2 accent-zinc-600"
                   />
                 </div>
@@ -937,7 +1013,7 @@ export default function ProjectsPage() {
                   />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2 pt-2 border-t">
+              <div className="flex justify-end space-x-2 pt-2">
                 <Button type="button" onClick={() => setDialogOpen(false)} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">
                   取消
                 </Button>
@@ -976,7 +1052,7 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {filteredProjects.map((project) => (
-            <Card key={project.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white overflow-hidden">
+            <Card key={project.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow border-0 bg-white overflow-hidden group">
               <CardHeader className="pb-3 pt-3 px-4 border-b border-zinc-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -986,42 +1062,42 @@ export default function ProjectsPage() {
                       {getStatusText2(project.status)}
                     </Badge>
                   </div>
-                  <div className="flex gap-1 shrink-0 ml-2">
+                  <div className="flex gap-1 shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                       onClick={() => handleEdit(project)}
                       title="编辑项目"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                       onClick={() => handleManageSettlements(project)}
                       title="结算阶段"
                     >
-                      <Coins className="w-3.5 h-3.5 text-amber-600" />
+                      <Coins className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                       onClick={() => handleOpenCreateTask(project.id)}
                       title="创建任务"
                     >
-                      <CheckSquare className="w-3.5 h-3.5" />
+                      <CheckSquare className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
                       onClick={() => handleDelete(project.id)}
                       title="删除项目"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>

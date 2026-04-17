@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getProjects, getWeeklyUpdates, getProjectWeeklyUpdates, createWeeklyUpdate, updateWeeklyUpdate, deleteWeeklyUpdate, getSettlementStages, createTask, getTasks } from '@/lib/supabase/queries'
+import { getProjects, getWeeklyUpdates, getProjectWeeklyUpdates, createWeeklyUpdate, updateWeeklyUpdate, deleteWeeklyUpdate, getSettlementStages, getSettlementStagesBatch, createTask, getTasks, getTasksByProject } from '@/lib/supabase/queries'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -21,6 +21,9 @@ export default function UpdatesPage() {
   const [loading, setLoading] = useState(true)
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [historyEditDialogOpen, setHistoryEditDialogOpen] = useState(false)
+  const [historyEditingUpdate, setHistoryEditingUpdate] = useState<any>(null)
+  const [historyEditContent, setHistoryEditContent] = useState('')
   const [currentProject, setCurrentProject] = useState<any>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [currentWeek, setCurrentWeek] = useState('')
@@ -69,7 +72,15 @@ export default function UpdatesPage() {
     }
     return []
   })
+  const [filterMilestone, setFilterMilestone] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('updates-filterMilestone')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
+  const [settlementsMap, setSettlementsMap] = useState<Map<string, any[]>>(new Map())
 
   // 保存筛选器状态到localStorage
   useEffect(() => {
@@ -80,8 +91,9 @@ export default function UpdatesPage() {
       localStorage.setItem('updates-filterInvoicedStatus', JSON.stringify(filterInvoicedStatus))
       localStorage.setItem('updates-filterPaidStatus', JSON.stringify(filterPaidStatus))
       localStorage.setItem('updates-filterBelongYear', JSON.stringify(filterBelongYear))
+      localStorage.setItem('updates-filterMilestone', JSON.stringify(filterMilestone))
     }
-  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear])
+  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear, filterMilestone])
 
   // 任务对话框状态
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
@@ -106,10 +118,11 @@ export default function UpdatesPage() {
   useEffect(() => {
     const week = getCurrentWeek()
     setCurrentWeek(week)
-    loadData()
+    loadData(week)
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (weekOverride?: string) => {
+    const week = weekOverride ?? currentWeek
     try {
       const [projectsData, updatesData] = await Promise.all([
         getProjects(),
@@ -118,14 +131,15 @@ export default function UpdatesPage() {
 
       // 为每个项目获取最新的进展和结算段状态
       const projectIds = projectsData.map((p: any) => p.id)
-      const settlementsPromises = projectIds.map(id => getSettlementStages(id))
-      const settlementsArray = await Promise.all(settlementsPromises)
+      // 批量查询所有项目的结算阶段（替代 N+1 查询）
+      const settlementsMapData = await getSettlementStagesBatch(projectIds)
+      setSettlementsMap(settlementsMapData)
 
       const projectWithUpdates = projectsData.map((project: any) => {
         const projectUpdates = updatesData.filter((u: any) => u.project_id === project.id)
         const latestUpdate = projectUpdates[0]
-        const settlements = settlementsArray[projectIds.indexOf(project.id)] || []
-        const currentWeekUpdate = projectUpdates.find((u: any) => u.week === currentWeek)
+        const settlements = settlementsMapData.get(project.id) || []
+        const currentWeekUpdate = projectUpdates.find((u: any) => u.week === week)
 
         // 计算结算段状态
         const totalStages = project.settlement_stages || 1
@@ -195,8 +209,16 @@ export default function UpdatesPage() {
 
   const handleEditThisWeek = (project: any) => {
     setCurrentProject(project)
-    setEditingId(project.current_week_update?.id || null)
-    setFormData({ content: project.current_week_update?.content || '' })
+    const existing = project.current_week_update
+    setEditingId(existing?.id || null)
+    setFormData({ content: existing?.content || '' })
+    setEditDialogOpen(true)
+  }
+
+  const handleEditHistoryUpdate = (update: any) => {
+    setEditingId(update.id)
+    setFormData({ content: update.content || '' })
+    setHistoryDialogOpen(false)
     setEditDialogOpen(true)
   }
 
@@ -283,8 +305,8 @@ export default function UpdatesPage() {
   const handleViewProjectTasks = async (project: any) => {
     try {
       setViewTasksProject(project)
-      const tasks = await getTasks()
-      const projectTasksData = tasks.filter((t: any) => t.project_id === project.id)
+      // 直接获取该项目的任务（替代获取所有任务再过滤）
+      const projectTasksData = await getTasksByProject(project.id)
       setProjectTasks(projectTasksData)
       setViewTasksDialogOpen(true)
     } catch (error: any) {
@@ -450,6 +472,43 @@ export default function UpdatesPage() {
       }
     }
 
+    // 关注节点筛选（未来30天 + 已逾期）
+    if (filterMilestone.length > 0) {
+      const today = new Date(new Date().toDateString())
+      const future30 = new Date(today)
+      future30.setDate(future30.getDate() + 30)
+      future30.setHours(23, 59, 59)
+      const stages = settlementsMap.get(project.id) || []
+
+      const matches = filterMilestone.some(type => {
+        if (type === '计划签约') {
+          if (!project.expected_close_date || project.contract_signed || project.has_start_notice) return false
+          return new Date(project.expected_close_date) <= future30
+        }
+        if (type === '计划验收') {
+          return stages.some((s: any) => {
+            if (s.accepted || !s.planned_accepted_date) return false
+            return new Date(s.planned_accepted_date) <= future30
+          })
+        }
+        if (type === '计划开票') {
+          return stages.some((s: any) => {
+            if (s.invoiced || !s.planned_invoiced_date) return false
+            return new Date(s.planned_invoiced_date) <= future30
+          })
+        }
+        if (type === '计划回款') {
+          return stages.some((s: any) => {
+            if (s.paid || !s.planned_paid_date) return false
+            return new Date(s.planned_paid_date) <= future30
+          })
+        }
+        return false
+      })
+
+      if (!matches) return false
+    }
+
     return true
   })
 
@@ -464,12 +523,12 @@ export default function UpdatesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">项目进展</h1>
-          <p className="mt-1 text-sm text-zinc-500">每周填写项目进展，记录签署、验收、开票、回款情况</p>
+          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">项目进展</h1>
+          <p className="mt-2 text-zinc-500 text-sm">每周填写项目进展，记录签署、验收、开票、回款情况</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
@@ -491,9 +550,9 @@ export default function UpdatesPage() {
             <Filter className="w-4 h-4 mr-2" />
             筛选
             {(filterProjectStatus.length > 0 || filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
-              filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0) && (
+              filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0 || filterMilestone.length > 0) && (
               <Badge variant="secondary" className="ml-2 bg-zinc-900 text-white">
-                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length}
+                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length + filterMilestone.length}
               </Badge>
             )}
           </Button>
@@ -510,14 +569,13 @@ export default function UpdatesPage() {
       ) : (
         <Card className="rounded-2xl shadow-sm border-0 bg-white">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead className="bg-zinc-50 border-b border-zinc-200 rounded-t-2xl">
                 <tr>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[260px] rounded-tl-2xl">项目名称</th>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[280px]">结算状态</th>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[180px]">最新进展</th>
-                  <th className="text-right py-4 px-4 text-xs font-medium text-zinc-500 uppercase min-w-[140px] rounded-tr-2xl">
-                    操作
+                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[220px] rounded-tl-2xl">项目名称</th>
+                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[210px]">结算状态</th>
+                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[350px]">最新进展</th>
+                  <th className="text-right py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[120px] rounded-tr-2xl">
                   </th>
                 </tr>
               </thead>
@@ -536,23 +594,11 @@ export default function UpdatesPage() {
                             <span className="text-xs text-zinc-500">¥{project.value.toLocaleString()}</span>
                           )}
                         </div>
-                        <div className="font-medium text-sm truncate max-w-[260px]">{project.name}</div>
+                        <div className="font-medium text-sm truncate max-w-[220px]">{project.name}</div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {/* 合同签署 */}
-                        {project.contract_signed ? (
-                          <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            已签合同
-                          </span>
-                        ) : project.has_start_notice ? (
-                          <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            有开工函
-                          </span>
-                        ) : null}
                         {/* 验收、开票、回款 */}
                         <span className="px-2 py-0.5 bg-[#e4e4e7] text-zinc-700 text-xs rounded-full">
                           验收: {project.settlement_summary?.accepted || 0}/{project.settlement_summary?.total || 0}
@@ -589,7 +635,7 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                           onClick={() => handleEditThisWeek(project)}
                           title={project.current_week_update ? '编辑本周进展' : '填写本周进展'}
                         >
@@ -598,7 +644,7 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                           onClick={() => handleOpenHistory(project)}
                           title="查看历史"
                         >
@@ -607,20 +653,20 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleViewProjectTasks(project)}
-                          title="查看任务"
-                        >
-                          <ListTodo className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                           onClick={() => handleOpenCreateTask(project.id)}
                           title="创建任务"
                         >
                           <CheckSquare className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                          onClick={() => handleViewProjectTasks(project)}
+                          title="查看任务"
+                        >
+                          <ListTodo className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -634,8 +680,8 @@ export default function UpdatesPage() {
 
       {/* 填写/编辑本周进展对话框 */}
       <Dialog open={editDialogOpen} onOpenChange={(open) => {
-        setEditDialogOpen(open)
         if (!open) {
+          setEditDialogOpen(false)
           setEditingId(null)
           setFormData({ content: '' })
           setCurrentProject(null)
@@ -751,9 +797,22 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700"
+                          onClick={() => {
+                            setHistoryEditingUpdate(update)
+                            setHistoryEditContent(update.content || '')
+                            setHistoryEditDialogOpen(true)
+                          }}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
                           onClick={() => handleDeleteUpdate(update.id)}
                         >
-                          <Trash2 className="w-4 h-4 text-rose-500" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -792,11 +851,66 @@ export default function UpdatesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* 历史记录编辑对话框 */}
+      <Dialog open={historyEditDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setHistoryEditDialogOpen(false)
+          setHistoryEditingUpdate(null)
+          setHistoryEditContent('')
+        }
+      }}>
+        <DialogContent className="max-w-2xl rounded-2xl shadow-xl border-0">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              编辑历史进展 - {historyEditingUpdate && getMondayDisplay(historyEditingUpdate.week)} 周
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium text-zinc-700">进展内容 *</Label>
+              <Textarea
+                value={historyEditContent}
+                onChange={(e) => setHistoryEditContent(e.target.value)}
+                rows={6}
+                className="mt-2 resize-none border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setHistoryEditDialogOpen(false)} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50 px-6">
+                取消
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!historyEditContent.trim()) { toast.error('请填写内容'); return }
+                  try {
+                    await updateWeeklyUpdate(historyEditingUpdate.id, { content: historyEditContent })
+                    toast.success('更新成功')
+                    setHistoryEditDialogOpen(false)
+                    setHistoryEditingUpdate(null)
+                    setHistoryEditContent('')
+                    if (currentProject) {
+                      const updates = await getProjectWeeklyUpdates(currentProject.id)
+                      setCurrentProject({ ...currentProject, history: updates })
+                    }
+                    loadData()
+                  } catch (error: any) {
+                    toast.error(error.message || '更新失败')
+                  }
+                }}
+                className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 px-6"
+              >
+                保存
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* 筛选器对话框 */}
       <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
         <DialogContent className="max-w-4xl rounded-2xl shadow-xl border-0">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-2">
               <DialogTitle className="text-lg font-semibold">筛选条件</DialogTitle>
               <Button
                 onClick={() => {
@@ -806,10 +920,11 @@ export default function UpdatesPage() {
                   setFilterInvoicedStatus([])
                   setFilterPaidStatus([])
                   setFilterBelongYear([])
+                  setFilterMilestone([])
                 }}
                 variant="ghost"
                 size="sm"
-                className="text-zinc-500 hover:text-zinc-700 mr-2"
+                className="text-zinc-500 hover:text-zinc-700"
               >
                 <RotateCcw className="w-4 h-4 mr-1" />
                 清空筛选
@@ -817,7 +932,7 @@ export default function UpdatesPage() {
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-7 gap-4 px-2">
             {/* 项目状态 */}
             <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">项目状态</Label>
@@ -972,12 +1087,36 @@ export default function UpdatesPage() {
                 )}
               </div>
             </div>
+
+            {/* 关注节点 */}
+            <div>
+              <Label className="text-xs font-medium text-zinc-700 mb-2 block">关注节点</Label>
+              <div className="space-y-1.5">
+                {['计划签约', '计划验收', '计划开票', '计划回款'].map(type => (
+                  <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterMilestone.includes(type)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFilterMilestone([...filterMilestone, type])
+                        } else {
+                          setFilterMilestone(filterMilestone.filter(s => s !== type))
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
+                    />
+                    <span className="text-zinc-700">{type}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end mt-4 pr-2">
             <Button
               onClick={() => setFilterDialogOpen(false)}
-              className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full"
+              className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full px-8"
             >
               确定
             </Button>
