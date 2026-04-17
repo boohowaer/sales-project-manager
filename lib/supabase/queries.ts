@@ -441,54 +441,56 @@ export async function getDashboardStats(supabase?: any) {
   // 获取当前年份
   const currentYear = new Date().getFullYear()
 
-  // 只获取当前年份的项目以计算统计数据
-  const { data: allProjects, error: projectsError } = await client
-    .from('projects')
-    .select('id, status, value, probability, has_start_notice, contract_signed')
-    .eq('belong_year', currentYear)
+  // 获取时间范围
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
 
-  console.log('仪表盘统计 - 当前年份:', currentYear)
-  console.log('仪表盘统计 - 项目数据:', allProjects)
-  console.log('仪表盘统计 - 项目错误:', projectsError)
+  const weekEnd = new Date(today)
+  const dayOfWeek = weekEnd.getDay()
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
+  weekEnd.setDate(weekEnd.getDate() + daysUntilSunday)
+  weekEnd.setHours(23, 59, 59, 999)
 
-  if (projectsError) {
-    console.error('获取项目数据失败:', projectsError)
-  }
+  const tomorrowStart = new Date(today)
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
 
-  // 计算总项目数和活跃项目数
+  // 并行执行项目查询和任务查询（优化：减少数据库往返）
+  const [projectsResult, tasksResult] = await Promise.all([
+    client
+      .from('projects')
+      .select('id, status, value, probability, has_start_notice, contract_signed')
+      .eq('belong_year', currentYear),
+    client
+      .from('tasks')
+      .select('id, due_date, status')
+  ])
+
+  const allProjects = projectsResult.data
+  const allTasks = tasksResult.data || []
+
+  // 计算项目统计数据
   const totalProjects = allProjects?.length || 0
   const activeProjects = allProjects?.filter(p => p.status === 'active').length || 0
-
-  // 计算总价值和预期收入
   const totalValue = allProjects?.reduce((sum, p) => sum + (p.value || 0), 0) || 0
   const expectedValue = allProjects?.reduce((sum, p) => sum + ((p.value || 0) * (p.probability || 0) / 100), 0) || 0
-
-  console.log('仪表盘统计 - 总项目数:', totalProjects)
-  console.log('仪表盘统计 - 活跃项目:', activeProjects)
-  console.log('仪表盘统计 - 总价值:', totalValue)
-
-  // 计算已签约项目金额
   const signedWithStart = allProjects?.filter(p => p.has_start_notice || p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0) || 0
   const signedWithContract = allProjects?.filter(p => p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0) || 0
 
-  // 获取所有结算阶段数据
+  // 获取结算阶段数据（需要 projectIds，所以放在后面）
   const projectIds = allProjects?.map(p => p.id) || []
-  const { data: allSettlements, error: settlementsError } = await client
+  const { data: allSettlements } = await client
     .from('settlement_stages')
     .select('project_id, amount, accepted, invoiced, paid')
     .in('project_id', projectIds)
 
-  if (settlementsError) {
-    console.error('获取结算段数据失败:', settlementsError)
-  }
-
-  // 计算已验收、已开票、已回款金额（基于结算阶段）
+  // 计算已验收、已开票、已回款金额
   let acceptedAmount = 0
   let invoicedAmount = 0
   let paidAmount = 0
 
   if (allSettlements) {
-    // 对每个项目，找出已验收/已开票/已回款的结算段
     const projectSettlements = new Map<string, typeof allSettlements>()
     allSettlements.forEach(s => {
       if (!projectSettlements.has(s.project_id)) {
@@ -497,38 +499,28 @@ export async function getDashboardStats(supabase?: any) {
       projectSettlements.get(s.project_id)!.push(s)
     })
 
-    // 计算每个项目的金额（只计算有 amount 的结算段）
     projectSettlements.forEach((settlements, projectId) => {
       const project = allProjects?.find(p => p.id === projectId)
 
-      // 如果项目没有总金额，则使用结算段金额
       if (!project || !project.value) {
-        // 使用结算段的金额
         settlements.forEach(s => {
           if (s.accepted) acceptedAmount += (s.amount || 0)
           if (s.invoiced) invoicedAmount += (s.amount || 0)
           if (s.paid) paidAmount += (s.amount || 0)
         })
       } else {
-        // 项目有总金额，按比例计算
         const totalStages = settlements.length
         const totalStageAmount = settlements.reduce((sum, s) => sum + (s.amount || 0), 0)
 
         if (totalStageAmount > 0) {
-          // 使用结算段金额占比
-          const acceptedStages = settlements.filter(s => s.accepted)
-          const invoicedStages = settlements.filter(s => s.invoiced)
-          const paidStages = settlements.filter(s => s.paid)
-
-          const acceptedStageAmount = acceptedStages.reduce((sum, s) => sum + (s.amount || 0), 0)
-          const invoicedStageAmount = invoicedStages.reduce((sum, s) => sum + (s.amount || 0), 0)
-          const paidStageAmount = paidStages.reduce((sum, s) => sum + (s.amount || 0), 0)
+          const acceptedStageAmount = settlements.filter(s => s.accepted).reduce((sum, s) => sum + (s.amount || 0), 0)
+          const invoicedStageAmount = settlements.filter(s => s.invoiced).reduce((sum, s) => sum + (s.amount || 0), 0)
+          const paidStageAmount = settlements.filter(s => s.paid).reduce((sum, s) => sum + (s.amount || 0), 0)
 
           acceptedAmount += (acceptedStageAmount / totalStageAmount) * project.value
           invoicedAmount += (invoicedStageAmount / totalStageAmount) * project.value
           paidAmount += (paidStageAmount / totalStageAmount) * project.value
         } else {
-          // 结算段没有金额，平均分配
           const acceptedStages = settlements.filter(s => s.accepted).length
           const invoicedStages = settlements.filter(s => s.invoiced).length
           const paidStages = settlements.filter(s => s.paid).length
@@ -543,65 +535,22 @@ export async function getDashboardStats(supabase?: any) {
     })
   }
 
-  // 获取所有任务（不计日期）
-  const { data: allTasks, error: allTasksError } = await client
-    .from('tasks')
-    .select('id, due_date, status')
+  // 计算今日和本周任务数（优化：从已获取的 allTasks 计算，无需额外查询）
+  const todayTasks = allTasks.filter(t => {
+    if (!t.due_date || t.status === 'completed') return false
+    const dueDate = new Date(t.due_date)
+    return dueDate >= today && dueDate < tomorrow
+  }).length
 
-  console.log('仪表盘统计 - 所有任务:', allTasks)
-  console.log('仪表盘统计 - 任务错误:', allTasksError)
+  const weekTasks = allTasks.filter(t => {
+    if (!t.due_date || t.status === 'completed') return false
+    const dueDate = new Date(t.due_date)
+    const isOverdue = dueDate < today
+    const isThisWeek = dueDate >= tomorrowStart && dueDate <= weekEnd
+    return isOverdue || isThisWeek
+  }).length
 
-  // 获取今日任务数
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
-  console.log('仪表盘统计 - 今日时间范围:', {
-    today: today.toISOString(),
-    tomorrow: tomorrow.toISOString()
-  })
-
-  const { data: todayTasksData, error: todayError } = await client
-    .from('tasks')
-    .select('id, due_date, status')
-    .gte('due_date', today.toISOString())
-    .lt('due_date', tomorrow.toISOString())
-    .neq('status', 'completed')
-
-  console.log('仪表盘统计 - 今日任务数据:', todayTasksData)
-  console.log('仪表盘统计 - 今日任务错误:', todayError)
-
-  const todayTasks = todayTasksData?.length || 0
-
-  // 获取本周到期任务（到本周日结束，但不包括今日任务）
-  const weekEnd = new Date(today)
-  const dayOfWeek = weekEnd.getDay()  // 0是周日，1-6是周一到周六
-  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
-  weekEnd.setDate(weekEnd.getDate() + daysUntilSunday)
-  // 设置为周日的23:59:59，确保包含周日的任务
-  weekEnd.setHours(23, 59, 59, 999)
-
-  // 获取今天开始的时间（用于排除今日任务）
-  const todayStart = new Date(today)
-  todayStart.setHours(0, 0, 0, 0)
-
-  // 获取明天开始的时间
-  const tomorrowStart = new Date(todayStart)
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
-
-  const { data: weekTasksData, error: weekError } = await client
-    .from('tasks')
-    .select('id')
-    .or(`due_date.lt.${today.toISOString()},due_date.gte.${tomorrowStart.toISOString()}`)
-    .lte('due_date', weekEnd.toISOString())
-    .neq('status', 'completed')
-
-  console.log('仪表盘统计 - 本周任务数据（不包括今日）:', weekTasksData)
-
-  const weekTasks = weekTasksData?.length || 0
-
-  const result = {
+  return {
     totalProjects,
     activeProjects,
     totalValue,
@@ -614,10 +563,6 @@ export async function getDashboardStats(supabase?: any) {
     todayTasks,
     weekTasks
   }
-
-  console.log('仪表盘统计 - 最终结果:', result)
-
-  return result
 }
 
 // 结算段相关查询
@@ -631,6 +576,34 @@ export async function getSettlementStages(projectId: string): Promise<Settlement
 
   if (error) throw error
   return data || []
+}
+
+// 批量获取结算阶段（解决 N+1 查询问题）
+export async function getSettlementStagesBatch(projectIds: string[]): Promise<Map<string, SettlementStage[]>> {
+  if (projectIds.length === 0) {
+    return new Map()
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('settlement_stages')
+    .select('*')
+    .in('project_id', projectIds)
+    .order('stage_number', { ascending: true })
+
+  if (error) throw error
+
+  // 将结果按 project_id 分组
+  const map = new Map<string, SettlementStage[]>()
+  projectIds.forEach(id => map.set(id, []))
+  data?.forEach(stage => {
+    const stages = map.get(stage.project_id)
+    if (stages) {
+      stages.push(stage)
+    }
+  })
+
+  return map
 }
 
 export async function createSettlementStage(stage: SettlementStageInsert): Promise<SettlementStage> {

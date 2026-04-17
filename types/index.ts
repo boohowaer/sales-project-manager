@@ -189,6 +189,9 @@ export type Database = {
           invoiced_date: string | null
           paid: boolean
           paid_date: string | null
+          planned_accepted_date: string | null
+          planned_invoiced_date: string | null
+          planned_paid_date: string | null
           notes: string | null
           created_at: string
           updated_at: string
@@ -205,6 +208,9 @@ export type Database = {
           invoiced_date?: string | null
           paid?: boolean
           paid_date?: string | null
+          planned_accepted_date?: string | null
+          planned_invoiced_date?: string | null
+          planned_paid_date?: string | null
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -221,6 +227,9 @@ export type Database = {
           invoiced_date?: string | null
           paid?: boolean
           paid_date?: string | null
+          planned_accepted_date?: string | null
+          planned_invoiced_date?: string | null
+          planned_paid_date?: string | null
           notes?: string | null
           created_at?: string
           updated_at?: string

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
 import { LogoutButton } from '@/components/auth/LogoutButton'
+import { TasksProviderWrapper } from '@/components/layout/TasksProvider'
 
 export default async function DashboardLayout({
   children,
@@ -37,13 +38,6 @@ export default async function DashboardLayout({
             <p className="text-xs" style={{ color: '#999999' }}>销售个人任务管理工具</p>
           </div>
 
-          {/* 用户信息 */}
-          <div className="px-6 py-4">
-            <p className="text-sm font-medium text-white truncate">
-              {user.email}
-            </p>
-          </div>
-
           {/* 导航 */}
           <SidebarNavigation navigation={navigation} />
 
@@ -54,12 +48,14 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      {/* 主内容区域 */}
-      <div className="pl-64">
-        <main className="min-h-screen">
-          {children}
-        </main>
-      </div>
+      {/* 任务数据 Provider 包裹主内容区域 */}
+      <TasksProviderWrapper>
+        <div className="pl-64">
+          <main className="min-h-screen">
+            {children}
+          </main>
+        </div>
+      </TasksProviderWrapper>
     </div>
   )
 }

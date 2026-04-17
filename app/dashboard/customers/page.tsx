@@ -137,7 +137,7 @@ export default function CustomersPage() {
   return (
     <div className="p-8">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">客户管理</h1>
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
@@ -253,7 +253,7 @@ export default function CustomersPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(customer)}
-                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600"
+                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -282,9 +282,8 @@ export default function CustomersPage() {
                   </p>
                 )}
                 {customer.notes && (
-                  <p className="text-sm text-zinc-500 mt-3 pt-3 border-t border-zinc-100 flex items-start gap-2">
-                    <span className="text-zinc-400 mt-0.5">📝</span>
-                    <span className="line-clamp-2">{customer.notes}</span>
+                  <p className="text-sm text-zinc-500 mt-3 pt-3 border-t border-zinc-100 line-clamp-2">
+                    {customer.notes}
                   </p>
                 )}
               </CardContent>

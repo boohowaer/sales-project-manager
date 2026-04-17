@@ -132,7 +132,7 @@ export default function TasksPage() {
         // 重新加载任务数据以获取完整的关联信息
         await loadData()
       } else {
-        const newTask = await createTask({
+        await createTask({
           title: formData.title,
           description: formData.description || null,
           project_id: formData.project_id,
@@ -141,9 +141,7 @@ export default function TasksPage() {
           status: formData.status as any
         })
         toast.success('任务创建成功')
-
-        // 添加到本地列表
-        setTasks(prevTasks => [newTask, ...prevTasks])
+        await loadData()
       }
 
       setDialogOpen(false)
@@ -276,8 +274,8 @@ export default function TasksPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 tracking-tight">任务管理</h1>
-          <p className="mt-1 text-sm text-zinc-500">管理您的所有待办任务</p>
+          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">任务管理</h1>
+          <p className="mt-2 text-zinc-500 text-sm">管理您的所有待办任务</p>
         </div>
         <div className="flex gap-2">
           <div className="flex items-center gap-2">
@@ -305,7 +303,7 @@ export default function TasksPage() {
             if (!open) resetForm()
           }}>
             <DialogTrigger asChild>
-              <Button disabled={projects.length === 0} size="sm" className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
+              <Button disabled={projects.length === 0} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />
                 添加任务
               </Button>
@@ -432,7 +430,7 @@ export default function TasksPage() {
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-20">优先级</th>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-36">截止日期</th>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-32 whitespace-nowrap">任务状态</th>
-                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-24 whitespace-nowrap rounded-tr-2xl">操作</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-24 whitespace-nowrap rounded-tr-2xl"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -518,7 +516,7 @@ export default function TasksPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(task)}
-                            className="h-8 w-8 hover:bg-zinc-100 text-zinc-600"
+                            className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>

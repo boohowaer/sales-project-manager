@@ -2,24 +2,41 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import * as LucideIcons from 'lucide-react'
+import {
+  LayoutDashboard,
+  Users,
+  FolderKanban,
+  FileText,
+  CheckSquare,
+  Settings,
+  LucideIcon
+} from 'lucide-react'
 
-interface SidebarNavigationProps {
-  navigation: Array<{
-    name: string
-    href: string
-    iconName: string
-  }>
+interface NavigationItem {
+  name: string
+  href: string
+  iconName: string
 }
 
-export function SidebarNavigation({ navigation }: SidebarNavigationProps) {
+// 图标映射表
+const iconMap: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  Users,
+  FolderKanban,
+  FileText,
+  CheckSquare,
+  Settings
+}
+
+export function SidebarNavigation({ navigation }: { navigation: NavigationItem[] }) {
   const pathname = usePathname()
 
   return (
     <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       {navigation.map((item) => {
-        // 动态获取图标组件
-        const Icon = LucideIcons[item.iconName as keyof typeof LucideIcons]
+        const Icon = iconMap[item.iconName]
+        if (!Icon) return null
+
         const isActive = pathname === item.href
         return (
           <Link

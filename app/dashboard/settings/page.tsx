@@ -23,14 +23,13 @@ export default function SettingsPage() {
     loadSettings()
   }, [])
 
-  // 实时应用字体设置（用于设置页面的即时预览）
+  // 字体预览 - 保存后生效，避免拖动滑杆时页面抖动
   useEffect(() => {
-    document.documentElement.style.fontFamily = fontFamily
-  }, [fontFamily])
-
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${fontSize}px`
-  }, [fontSize])
+    if (!loading) {
+      document.documentElement.style.fontFamily = fontFamily
+      document.documentElement.style.fontSize = `${fontSize}px`
+    }
+  }, [loading])
 
   const loadSettings = async () => {
     try {
@@ -62,6 +61,9 @@ export default function SettingsPage() {
         sales_goal: salesGoal ? parseFloat(salesGoal) : null
       })
       toast.success('设置保存成功')
+      // 保存成功后应用字体设置
+      document.documentElement.style.fontFamily = fontFamily
+      document.documentElement.style.fontSize = `${fontSize}px`
     } catch (error: any) {
       toast.error(error.message || '保存设置失败')
     } finally {
@@ -70,9 +72,9 @@ export default function SettingsPage() {
   }
 
   const fonts = [
-    { value: 'Poppins, Inter', label: 'Poppins（英文数字）+ Inter（中文，默认）' },
-    { value: 'Inter', label: 'Inter（英文中文）' },
-    { value: 'system-ui', label: '系统字体' },
+    { value: 'Poppins, Inter', label: 'Poppins（西文）+ 系统默认（中文）' },
+    { value: 'Inter', label: 'Inter（西文）+ 系统默认（中文）' },
+    { value: 'system-ui', label: '系统字体（自动匹配）' },
     { value: 'sans-serif', label: '无衬线字体' },
     { value: 'serif', label: '衬线字体' },
     { value: 'monospace', label: '等宽字体' }
@@ -84,20 +86,64 @@ export default function SettingsPage() {
     { value: 'system', label: '跟随系统' }
   ]
 
+  // 加载时显示骨架屏
+  if (loading) {
+    return (
+      <div className="p-8 max-w-4xl">
+        {/* 页面标题骨架屏 */}
+        <div className="mb-8">
+          <div className="h-9 w-20 bg-zinc-200 rounded animate-pulse" />
+          <div className="h-4 w-48 bg-zinc-100 rounded animate-pulse mt-3" />
+        </div>
+        {/* 销售目标设定骨架屏 */}
+        <div className="mb-6">
+          <Card className="rounded-2xl shadow-sm border-0 bg-white">
+            <CardHeader>
+              <div className="h-6 w-32 bg-zinc-200 rounded animate-pulse" />
+              <div className="h-4 w-64 bg-zinc-100 rounded animate-pulse mt-2" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-10 w-full bg-zinc-100 rounded-lg animate-pulse" />
+            </CardContent>
+          </Card>
+        </div>
+        {/* 外观设置骨架屏 */}
+        <div className="mb-6">
+          <Card className="rounded-2xl shadow-sm border-0 bg-white">
+            <CardHeader>
+              <div className="h-6 w-32 bg-zinc-200 rounded animate-pulse" />
+              <div className="h-4 w-48 bg-zinc-100 rounded animate-pulse mt-2" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="h-10 w-full bg-zinc-100 rounded animate-pulse" />
+              <div className="h-10 w-full bg-zinc-100 rounded animate-pulse" />
+              <div className="h-10 w-full bg-zinc-100 rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        </div>
+        {/* 提醒设置骨架屏 */}
+        <Card className="rounded-2xl shadow-sm border-0 bg-white">
+          <CardHeader>
+            <div className="h-6 w-32 bg-zinc-200 rounded animate-pulse" />
+            <div className="h-4 w-48 bg-zinc-100 rounded animate-pulse mt-2" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-6 w-32 bg-zinc-100 rounded animate-pulse" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8 max-w-4xl">
       {/* 页面标题 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-zinc-900">设置</h1>
-        <p className="mt-2 text-zinc-500">自定义您的应用体验</p>
+        <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">设置</h1>
+        <p className="mt-2 text-zinc-500 text-sm">自定义您的应用体验</p>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="text-zinc-400">加载中...</div>
-        </div>
-      ) : (
-        <div className="space-y-6">
+      <div className="space-y-6">
           {/* 销售目标设定 */}
           <Card className="rounded-2xl shadow-sm border-0 bg-white">
             <CardHeader>
@@ -154,7 +200,7 @@ export default function SettingsPage() {
                   max="20"
                   value={fontSize}
                   onChange={(e) => setFontSize(parseInt(e.target.value))}
-                  className="mt-2"
+                  className="mt-2 border-0"
                 />
                 <div className="flex justify-between text-sm text-zinc-500 mt-2">
                   <span>12px（小）</span>
@@ -235,7 +281,6 @@ export default function SettingsPage() {
             </Button>
           </div>
         </div>
-      )}
     </div>
   )
 }

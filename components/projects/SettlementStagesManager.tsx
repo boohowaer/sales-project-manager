@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +46,9 @@ export function SettlementStagesManager({
     invoiced_date: '',
     paid: false,
     paid_date: '',
+    planned_accepted_date: '',
+    planned_invoiced_date: '',
+    planned_paid_date: '',
     notes: ''
   })
 
@@ -68,6 +71,9 @@ export function SettlementStagesManager({
       invoiced_date: formData.invoiced_date || null,
       paid: formData.paid,
       paid_date: formData.paid_date || null,
+      planned_accepted_date: formData.planned_accepted_date || null,
+      planned_invoiced_date: formData.planned_invoiced_date || null,
+      planned_paid_date: formData.planned_paid_date || null,
       notes: formData.notes || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -140,6 +146,9 @@ export function SettlementStagesManager({
           invoiced_date: stage.invoiced_date,
           paid: stage.paid,
           paid_date: stage.paid_date,
+          planned_accepted_date: stage.planned_accepted_date,
+          planned_invoiced_date: stage.planned_invoiced_date,
+          planned_paid_date: stage.planned_paid_date,
           notes: stage.notes
         })
       }
@@ -157,6 +166,9 @@ export function SettlementStagesManager({
           invoiced_date: stage.invoiced_date,
           paid: stage.paid,
           paid_date: stage.paid_date,
+          planned_accepted_date: stage.planned_accepted_date,
+          planned_invoiced_date: stage.planned_invoiced_date,
+          planned_paid_date: stage.planned_paid_date,
           notes: stage.notes
         })
         // 更新本地列表中的ID
@@ -173,8 +185,8 @@ export function SettlementStagesManager({
         onClose?.()
       }, 100)
     } catch (error: any) {
-      console.error('保存结算段失败:', error)
-      toast.error(error.message || '保存失败')
+      console.error('保存结算段失败:', error?.message || error?.details || error?.hint || JSON.stringify(error))
+      toast.error(error?.message || error?.details || '保存失败，请重试')
     }
   }
 
@@ -189,6 +201,9 @@ export function SettlementStagesManager({
       invoiced_date: '',
       paid: false,
       paid_date: '',
+      planned_accepted_date: '',
+      planned_invoiced_date: '',
+      planned_paid_date: '',
       notes: ''
     })
     setEditingId(null)
@@ -205,6 +220,9 @@ export function SettlementStagesManager({
       invoiced_date: stage.invoiced_date || '',
       paid: stage.paid,
       paid_date: stage.paid_date || '',
+      planned_accepted_date: stage.planned_accepted_date || '',
+      planned_invoiced_date: stage.planned_invoiced_date || '',
+      planned_paid_date: stage.planned_paid_date || '',
       notes: stage.notes || ''
     })
     setEditingId(stage.id)
@@ -243,128 +261,134 @@ export function SettlementStagesManager({
               添加结算段
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-2xl shadow-xl border-0">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">{editingId ? '编辑结算段' : '添加结算段'}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="stage_number" className="text-sm font-medium text-zinc-700">段号</Label>
+          <DialogContent className="w-[520px] rounded-2xl shadow-xl border-0 p-0 overflow-hidden">
+            <div className="px-6 pt-6 pb-4">
+              <DialogHeader>
+                <DialogTitle className="text-lg font-semibold text-zinc-900">{editingId ? '编辑结算段' : '添加结算段'}</DialogTitle>
+              </DialogHeader>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* 基础信息 */}
+              <div className="flex gap-3">
+                <div className="w-16 shrink-0">
+                  <p className="text-xs text-zinc-500 mb-1.5">段号</p>
                   <Input
-                    id="stage_number"
                     type="number"
                     value={formData.stage_number}
                     onChange={(e) => setFormData({ ...formData, stage_number: parseInt(e.target.value) })}
                     min={1}
                     max={stages}
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                    className="rounded-full border-zinc-200 text-center h-9 text-sm"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="amount" className="text-sm font-medium text-zinc-700">金额（元）</Label>
+                <div className="w-36 shrink-0">
+                  <p className="text-xs text-zinc-500 mb-1.5">金额（元）</p>
                   <Input
-                    id="amount"
                     type="number"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    placeholder="100000"
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                    placeholder="0"
+                    className="rounded-full border-zinc-200 h-9 text-sm"
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-zinc-500 mb-1.5">阶段名称</p>
+                  <Input
+                    value={formData.stage_name}
+                    onChange={(e) => setFormData({ ...formData, stage_name: e.target.value })}
+                    placeholder="如：首付款、验收款、尾款"
+                    className="rounded-full border-zinc-200 h-9 text-sm"
                   />
                 </div>
               </div>
 
+              {/* 验收 / 开票 / 回款 */}
               <div>
-                <Label htmlFor="stage_name" className="text-sm font-medium text-zinc-700">阶段名称</Label>
-                <Input
-                  id="stage_name"
-                  value={formData.stage_name}
-                  onChange={(e) => setFormData({ ...formData, stage_name: e.target.value })}
-                  placeholder="例如：首付款、进度款、尾款"
-                  className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                />
+                <p className="text-xs text-zinc-500 mb-1.5">回款进度</p>
+                <div className="rounded-2xl overflow-hidden border border-zinc-200">
+                {[
+                  {
+                    id: 'accepted', label: '验收',
+                    checked: formData.accepted,
+                    onCheck: (v: boolean) => setFormData({ ...formData, accepted: v }),
+                    planned: formData.planned_accepted_date,
+                    onPlanned: (v: string) => setFormData({ ...formData, planned_accepted_date: v }),
+                    done: formData.accepted_date,
+                    onDone: (v: string) => setFormData({ ...formData, accepted_date: v }),
+                  },
+                  {
+                    id: 'invoiced', label: '开票',
+                    checked: formData.invoiced,
+                    onCheck: (v: boolean) => setFormData({ ...formData, invoiced: v }),
+                    planned: formData.planned_invoiced_date,
+                    onPlanned: (v: string) => setFormData({ ...formData, planned_invoiced_date: v }),
+                    done: formData.invoiced_date,
+                    onDone: (v: string) => setFormData({ ...formData, invoiced_date: v }),
+                  },
+                  {
+                    id: 'paid', label: '回款',
+                    checked: formData.paid,
+                    onCheck: (v: boolean) => setFormData({ ...formData, paid: v }),
+                    planned: formData.planned_paid_date,
+                    onPlanned: (v: string) => setFormData({ ...formData, planned_paid_date: v }),
+                    done: formData.paid_date,
+                    onDone: (v: string) => setFormData({ ...formData, paid_date: v }),
+                  },
+                ].map((item, i, arr) => (
+                  <div key={item.id} className={`flex items-center px-4 py-3 gap-4 ${i < arr.length - 1 ? 'border-b border-zinc-200' : ''}`}>
+                    <label className="flex items-center gap-2 cursor-pointer w-16 shrink-0">
+                      <Checkbox
+                        id={item.id}
+                        checked={item.checked}
+                        onCheckedChange={(checked) => item.onCheck(Boolean(checked))}
+                        className="rounded-md"
+                      />
+                      <span className={`text-sm font-medium ${item.checked ? 'text-zinc-900' : 'text-zinc-500'}`}>{item.label}</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-zinc-400 shrink-0">计划</span>
+                      <Input
+                        type="date"
+                        value={item.planned}
+                        onChange={(e) => item.onPlanned(e.target.value)}
+                        className="rounded-xl border-zinc-200 h-8 text-xs w-[130px]"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-zinc-400 shrink-0">完成</span>
+                      <Input
+                        type="date"
+                        value={item.done}
+                        onChange={(e) => item.onDone(e.target.value)}
+                        className="rounded-xl border-zinc-200 h-8 text-xs w-[130px]"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="accepted"
-                    checked={formData.accepted}
-                    onCheckedChange={(checked) => setFormData({ ...formData, accepted: checked })}
-                  />
-                  <Label htmlFor="accepted" className="text-sm">已验收</Label>
-                </div>
-                {formData.accepted && (
-                  <Input
-                    type="date"
-                    value={formData.accepted_date}
-                    onChange={(e) => setFormData({ ...formData, accepted_date: e.target.value })}
-                    placeholder="验收日期"
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="invoiced"
-                    checked={formData.invoiced}
-                    onCheckedChange={(checked) => setFormData({ ...formData, invoiced: checked })}
-                  />
-                  <Label htmlFor="invoiced" className="text-sm">已开票</Label>
-                </div>
-                {formData.invoiced && (
-                  <Input
-                    type="date"
-                    value={formData.invoiced_date}
-                    onChange={(e) => setFormData({ ...formData, invoiced_date: e.target.value })}
-                    placeholder="开票日期"
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="paid"
-                    checked={formData.paid}
-                    onCheckedChange={(checked) => setFormData({ ...formData, paid: checked })}
-                  />
-                  <Label htmlFor="paid" className="text-sm">已回款</Label>
-                </div>
-                {formData.paid && (
-                  <Input
-                    type="date"
-                    value={formData.paid_date}
-                    onChange={(e) => setFormData({ ...formData, paid_date: e.target.value })}
-                    placeholder="回款日期"
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                )}
-              </div>
-
+              {/* 备注 */}
               <div>
-                <Label htmlFor="notes" className="text-sm font-medium text-zinc-700">备注</Label>
+                <p className="text-xs text-zinc-500 mb-1.5">备注</p>
                 <Textarea
-                  id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="其他信息..."
-                  rows={3}
-                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                  rows={2}
+                  className="rounded-xl border-zinc-200 text-sm resize-none"
                 />
               </div>
+            </div>
 
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-zinc-200 text-zinc-700 hover:bg-zinc-50">
-                  取消
-                </Button>
-                <Button onClick={handleAddEditStage} className="bg-zinc-900 text-white hover:bg-zinc-800">
-                  确定
-                </Button>
-              </div>
+            <div className="px-6 py-4 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50 h-9 px-5 text-sm">
+                取消
+              </Button>
+              <Button onClick={handleAddEditStage} className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 h-9 px-5 text-sm">
+                保存
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -427,6 +451,20 @@ export function SettlementStagesManager({
                             </span>
                           )}
                         </div>
+                        {/* 计划日期显示 */}
+                        {(stage.planned_accepted_date || stage.planned_invoiced_date || stage.planned_paid_date) && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-zinc-400">
+                            {stage.planned_accepted_date && (
+                              <span>计划验收 {new Date(stage.planned_accepted_date).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}</span>
+                            )}
+                            {stage.planned_invoiced_date && (
+                              <span>计划开票 {new Date(stage.planned_invoiced_date).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}</span>
+                            )}
+                            {stage.planned_paid_date && (
+                              <span>计划回款 {new Date(stage.planned_paid_date).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="flex space-x-1">
                         <Button
@@ -490,7 +528,7 @@ export function SettlementStagesManager({
                 // 重置为原始数据
                 setStageList(existingStages)
                 setHasChanges(false)
-                toast.info('已取消未保存的修改')
+                toast.success('已取消未保存的修改')
               }}
               disabled={!hasChanges}
               className="border-zinc-200 text-zinc-700 hover:bg-zinc-50"
