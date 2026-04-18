@@ -422,7 +422,7 @@ export default function TasksPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-zinc-50 border-b border-zinc-200 rounded-t-2xl">
+                <thead className="bg-white border-b border-zinc-200 rounded-t-2xl">
                   <tr>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-10 rounded-tl-2xl">状态</th>
                     <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-64">任务标题</th>

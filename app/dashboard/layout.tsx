@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { LogOut } from 'lucide-react'
 import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
 import { LogoutButton } from '@/components/auth/LogoutButton'
+import { MobileSidebar } from '@/components/layout/MobileSidebar'
 import { TasksProviderWrapper } from '@/components/layout/TasksProvider'
 
 export default async function DashboardLayout({
@@ -29,8 +28,8 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
-      {/* 侧边栏 */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 shadow-lg" style={{ backgroundColor: '#090702' }}>
+      {/* 桌面端侧边栏（md 以上显示） */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 z-50 w-64 flex-col shadow-lg" style={{ backgroundColor: '#090702' }}>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex flex-col justify-center h-20 px-6" style={{ backgroundColor: '#090702' }}>
@@ -48,9 +47,12 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
+      {/* 移动端抽屉式侧边栏 */}
+      <MobileSidebar navigation={navigation} />
+
       {/* 任务数据 Provider 包裹主内容区域 */}
       <TasksProviderWrapper>
-        <div className="pl-64">
+        <div className="md:pl-64">
           <main className="min-h-screen">
             {children}
           </main>

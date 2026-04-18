@@ -570,7 +570,7 @@ export default function UpdatesPage() {
         <Card className="rounded-2xl shadow-sm border-0 bg-white">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
-              <thead className="bg-zinc-50 border-b border-zinc-200 rounded-t-2xl">
+              <thead className="bg-white border-b border-zinc-200 rounded-t-2xl">
                 <tr>
                   <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[220px] rounded-tl-2xl">项目名称</th>
                   <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[210px]">结算状态</th>

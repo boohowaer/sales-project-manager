@@ -42,13 +42,13 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
           <Link
             key={item.name}
             href={item.href}
-            className={`flex items-center px-3 py-2.5 pr-4 text-sm font-medium rounded-full transition-all ${
+            className={`flex items-center px-3 py-2.5 pr-4 text-sm font-medium rounded-full transition-all duration-200 ease-in-out ${
               isActive
                 ? 'bg-zinc-800 text-white'
                 : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
             }`}
           >
-            <Icon className={`w-4.5 h-4.5 mr-4 transition-colors ${
+            <Icon className={`w-4.5 h-4.5 mr-4 transition-colors duration-200 ease-in-out ${
               isActive ? 'text-white' : 'text-zinc-500'
             }`} />
             {item.name}
