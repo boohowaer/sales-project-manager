@@ -55,6 +55,7 @@ export default function ProjectsPage() {
   const router = useRouter()
   const { viewMode, toggle } = useTeamView()
   const [isManager, setIsManager] = useState(false)
+  const [isSalesRep, setIsSalesRep] = useState(false)
   const [assignTarget, setAssignTarget] = useState<string | null>(null)
   const [projects, setProjects] = useState<any[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -166,6 +167,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     fetch('/api/me').then(r => r.json()).then(d => {
       setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
+      setIsSalesRep(d.role === 'sales_rep')
     })
   }, [])
 
@@ -240,23 +242,29 @@ export default function ProjectsPage() {
           belong_year: formData.belong_year ? parseInt(formData.belong_year) : null
         }
 
-        console.log('更新项目 - ID:', editingId)
-        console.log('更新项目 - 数据:', updateData)
+        const KEY_FIELDS = ['value', 'status', 'expected_close_date']
+        const hasKeyField = KEY_FIELDS.some(f => f in updateData)
 
-        try {
-          const updatedProject = await updateProject(editingId, updateData)
-          console.log('更新成功 - 返回数据:', updatedProject)
-          toast.success('项目更新成功')
-
-          // 立即更新本地状态，不需要重新加载
-          setProjects(prevProjects =>
-            prevProjects.map(p =>
-              p.id === editingId ? { ...p, ...updatedProject } : p
+        if (isSalesRep && hasKeyField) {
+          await fetch('/api/approvals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'update_project', targetId: editingId, payload: updateData }),
+          })
+          toast('修改已提交审批，原数据继续生效')
+        } else {
+          try {
+            const updatedProject = await updateProject(editingId, updateData)
+            toast.success('项目更新成功')
+            setProjects(prevProjects =>
+              prevProjects.map(p =>
+                p.id === editingId ? { ...p, ...updatedProject } : p
+              )
             )
-          )
-        } catch (updateError: any) {
-          console.error('更新项目失败，详细错误:', updateError)
-          throw updateError
+          } catch (updateError: any) {
+            console.error('更新项目失败，详细错误:', updateError)
+            throw updateError
+          }
         }
       } else {
         const createData = {
@@ -276,12 +284,18 @@ export default function ProjectsPage() {
           belong_year: formData.belong_year ? parseInt(formData.belong_year) : null
         }
 
-        console.log('创建项目:', createData)
-        const newProject = await createProject(createData)
-        toast.success('项目创建成功')
-
-        // 添加到本地列表
-        setProjects(prevProjects => [newProject, ...prevProjects])
+        if (isSalesRep) {
+          await fetch('/api/approvals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'create_project', payload: createData }),
+          })
+          toast('已提交审批，等待经理审核')
+        } else {
+          const newProject = await createProject(createData)
+          toast.success('项目创建成功')
+          setProjects(prevProjects => [newProject, ...prevProjects])
+        }
       }
 
       setDialogOpen(false)

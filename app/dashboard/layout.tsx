@@ -27,6 +27,9 @@ export default async function DashboardLayout({
     { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
     { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
     { name: '设置', href: '/dashboard/settings', iconName: 'Settings' },
+    ...(ctx?.role === 'super_admin' || ctx?.role === 'sales_manager' ? [
+      { name: '待审批', href: '/dashboard/admin/approvals', iconName: 'ClipboardCheck', showPendingBadge: true },
+    ] : []),
     ...(ctx?.role === 'super_admin' ? [
       { name: '成员管理', href: '/dashboard/admin/users', iconName: 'UserCog' },
       { name: '数据字典', href: '/dashboard/admin/dictionary', iconName: 'BookOpen' },

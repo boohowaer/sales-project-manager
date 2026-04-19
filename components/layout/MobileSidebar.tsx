@@ -9,6 +9,7 @@ interface NavigationItem {
   name: string
   href: string
   iconName: string
+  showPendingBadge?: boolean
 }
 
 export function MobileSidebar({ navigation }: { navigation: NavigationItem[] }) {

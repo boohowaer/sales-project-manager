@@ -26,6 +26,7 @@ export default function CustomersPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assignTarget, setAssignTarget] = useState<string | null>(null)
   const [isManager, setIsManager] = useState(false)
+  const [isSalesRep, setIsSalesRep] = useState(false)
   const { viewMode, toggle } = useTeamView()
   const [formData, setFormData] = useState({
     name: '',
@@ -38,6 +39,7 @@ export default function CustomersPage() {
   useEffect(() => {
     fetch('/api/me').then(r => r.json()).then(d => {
       setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
+      setIsSalesRep(d.role === 'sales_rep')
     })
   }, [])
 
@@ -76,15 +78,25 @@ export default function CustomersPage() {
         })
         toast.success('客户更新成功')
       } else {
-        // 创建新客户
-        await createCustomer({
+        const payload = {
           name: formData.name,
           company: formData.company || null,
           email: formData.email || null,
           phone: formData.phone || null,
           notes: formData.notes || null
-        })
-        toast.success('客户创建成功')
+        }
+        if (isSalesRep) {
+          await fetch('/api/approvals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'create_customer', payload }),
+          })
+          toast('已提交审批，等待经理审核')
+        } else {
+          // 创建新客户
+          await createCustomer(payload)
+          toast.success('客户创建成功')
+        }
       }
       setDialogOpen(false)
       setFormData({ name: '', company: '', email: '', phone: '', notes: '' })

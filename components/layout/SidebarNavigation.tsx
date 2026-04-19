@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import {
   LayoutDashboard,
   Users,
@@ -11,6 +12,7 @@ import {
   Settings,
   UserCog,
   BookOpen,
+  ClipboardCheck,
   LucideIcon
 } from 'lucide-react'
 
@@ -18,6 +20,7 @@ interface NavigationItem {
   name: string
   href: string
   iconName: string
+  showPendingBadge?: boolean
 }
 
 // 图标映射表
@@ -30,10 +33,24 @@ const iconMap: Record<string, LucideIcon> = {
   Settings,
   UserCog,
   BookOpen,
+  ClipboardCheck,
 }
 
 export function SidebarNavigation({ navigation }: { navigation: NavigationItem[] }) {
   const pathname = usePathname()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  const hasPendingBadge = navigation.some(n => n.showPendingBadge)
+
+  useEffect(() => {
+    if (!hasPendingBadge) return
+    fetch('/api/approvals')
+      .then(r => r.json())
+      .then((data: unknown) => {
+        if (Array.isArray(data)) setPendingCount(data.length)
+      })
+      .catch(() => {})
+  }, [hasPendingBadge])
 
   return (
     <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -56,6 +73,11 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
               isActive ? 'text-white' : 'text-zinc-500'
             }`} />
             {item.name}
+            {item.showPendingBadge && pendingCount > 0 && (
+              <span className="ml-auto text-xs bg-rose-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+                {pendingCount}
+              </span>
+            )}
           </Link>
         )
       })}
