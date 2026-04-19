@@ -4,6 +4,7 @@ import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
 import { LogoutButton } from '@/components/auth/LogoutButton'
 import { MobileSidebar } from '@/components/layout/MobileSidebar'
 import { TasksProviderWrapper } from '@/components/layout/TasksProvider'
+import { getUserTeamContext } from '@/lib/auth/get-user-role'
 
 export default async function DashboardLayout({
   children,
@@ -17,6 +18,8 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  const ctx = await getUserTeamContext()
+
   const navigation = [
     { name: '仪表板', href: '/dashboard', iconName: 'LayoutDashboard' },
     { name: '客户', href: '/dashboard/customers', iconName: 'Users' },
@@ -24,6 +27,10 @@ export default async function DashboardLayout({
     { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
     { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
     { name: '设置', href: '/dashboard/settings', iconName: 'Settings' },
+    ...(ctx?.role === 'super_admin' ? [
+      { name: '成员管理', href: '/dashboard/admin/users', iconName: 'UserCog' },
+      { name: '数据字典', href: '/dashboard/admin/dictionary', iconName: 'BookOpen' },
+    ] : []),
   ]
 
   return (

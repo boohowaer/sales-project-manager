@@ -9,6 +9,8 @@ import {
   FileText,
   CheckSquare,
   Settings,
+  UserCog,
+  BookOpen,
   LucideIcon
 } from 'lucide-react'
 
@@ -25,7 +27,9 @@ const iconMap: Record<string, LucideIcon> = {
   FolderKanban,
   FileText,
   CheckSquare,
-  Settings
+  Settings,
+  UserCog,
+  BookOpen,
 }
 
 export function SidebarNavigation({ navigation }: { navigation: NavigationItem[] }) {
