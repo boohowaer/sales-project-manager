@@ -88,6 +88,55 @@ export async function acceptInvitation(token: string, userId: string): Promise<v
     .eq('token', token)
 }
 
+// ─── 分派 ───────────────────────────────────────────────────
+
+export async function assignResource(params: {
+  teamId: string
+  resourceType: 'customer' | 'project' | 'task'
+  resourceId: string
+  assignedFrom: string | null
+  assignedTo: string
+  operatedBy: string
+}): Promise<void> {
+  const supabase = createAdminClient()
+  const table = params.resourceType === 'customer' ? 'customers'
+    : params.resourceType === 'project' ? 'projects' : 'tasks'
+
+  const { error: updateError } = await supabase
+    .from(table)
+    .update({ user_id: params.assignedTo })
+    .eq('id', params.resourceId)
+  if (updateError) throw updateError
+
+  const { error: logError } = await supabase
+    .from('assignment_logs')
+    .insert({
+      team_id: params.teamId,
+      resource_type: params.resourceType,
+      resource_id: params.resourceId,
+      assigned_from: params.assignedFrom,
+      assigned_to: params.assignedTo,
+      operated_by: params.operatedBy,
+    })
+  if (logError) throw logError
+}
+
+export async function getTeamActiveMembers(teamId: string): Promise<{ id: string; user_id: string; email: string; role: string }[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('team_members')
+    .select('id, user_id, role, users:user_id(email)')
+    .eq('team_id', teamId)
+    .eq('status', 'active')
+  if (error) throw error
+  return (data || []).map((m: any) => ({
+    id: m.id,
+    user_id: m.user_id,
+    role: m.role,
+    email: (m.users as { email: string } | null)?.email ?? '',
+  }))
+}
+
 // ─── 数据字典 ───────────────────────────────────────────────
 
 export type DictionaryEntry = {

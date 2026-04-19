@@ -19,6 +19,8 @@ import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Project, Customer } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
+import { useTeamView } from '@/hooks/useTeamView'
+import { AssignDialog } from '@/components/admin/AssignDialog'
 
 // 辅助函数：获取验收/开票/回款状态Badge
 const getStatusBadge = (type: 'accepted' | 'invoiced' | 'paid', count: number, total: number) => {
@@ -51,6 +53,9 @@ export default function ProjectsPage() {
   }
 
   const router = useRouter()
+  const { viewMode, toggle } = useTeamView()
+  const [isManager, setIsManager] = useState(false)
+  const [assignTarget, setAssignTarget] = useState<string | null>(null)
   const [projects, setProjects] = useState<any[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -159,6 +164,12 @@ export default function ProjectsPage() {
   })
 
   useEffect(() => {
+    fetch('/api/me').then(r => r.json()).then(d => {
+      setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
+    })
+  }, [])
+
+  useEffect(() => {
     loadData()
 
     // 检查是否需要自动打开项目创建对话框
@@ -169,10 +180,14 @@ export default function ProjectsPage() {
     }
   }, [])
 
+  useEffect(() => {
+    loadData()
+  }, [viewMode])
+
   const loadData = async () => {
     try {
       const [projectsData, customersData] = await Promise.all([
-        getProjects(),
+        getProjects({ teamView: viewMode === 'team' }),
         getCustomers()
       ])
       setProjects(projectsData)
@@ -599,6 +614,14 @@ export default function ProjectsPage() {
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有销售项目</p>
         </div>
         <div className="flex gap-2 items-center">
+          {isManager && (
+            <button
+              onClick={toggle}
+              className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
+            >
+              {viewMode === 'mine' ? '查看全团队' : '只看我的'}
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <Search className="w-4 h-4 text-zinc-400" />
             <Input
@@ -1078,6 +1101,17 @@ export default function ProjectsPage() {
                     </Badge>
                   </div>
                   <div className="flex gap-1 shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isManager && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                        onClick={() => setAssignTarget(project.id)}
+                        title="分派"
+                      >
+                        <span className="text-xs">派</span>
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1311,6 +1345,18 @@ export default function ProjectsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 分派对话框 */}
+      {filteredProjects.map(project => (
+        <AssignDialog
+          key={project.id}
+          open={assignTarget === project.id}
+          onClose={() => setAssignTarget(null)}
+          resourceType="project"
+          resourceId={project.id}
+          onSuccess={loadData}
+        />
+      ))}
 
       {/* 批量导入对话框 */}
       <ImportDialog

@@ -15,6 +15,8 @@ import { Plus, Trash2, Check, Pencil, Search } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Task, Project } from '@/types'
+import { useTeamView } from '@/hooks/useTeamView'
+import { AssignDialog } from '@/components/admin/AssignDialog'
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -24,6 +26,9 @@ export default function TasksPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchKeyword, setSearchKeyword] = useState<string>('')
+  const [isManager, setIsManager] = useState(false)
+  const [assignTarget, setAssignTarget] = useState<string | null>(null)
+  const { viewMode, toggle } = useTeamView()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -34,7 +39,9 @@ export default function TasksPage() {
   })
 
   useEffect(() => {
-    loadData()
+    fetch('/api/me').then(r => r.json()).then(d => {
+      setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
+    })
 
     // 检查是否需要自动打开任务创建对话框
     const shouldOpenDialog = sessionStorage.getItem('openTaskDialog')
@@ -44,10 +51,14 @@ export default function TasksPage() {
     }
   }, [])
 
+  useEffect(() => {
+    loadData()
+  }, [viewMode])
+
   const loadData = async () => {
     try {
       const [tasksData, projectsData] = await Promise.all([
-        getTasks(),
+        getTasks({ teamView: viewMode === 'team' }),
         getProjects()
       ])
       setTasks(tasksData)
@@ -278,6 +289,14 @@ export default function TasksPage() {
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有待办任务</p>
         </div>
         <div className="flex gap-2">
+          {isManager && (
+            <button
+              onClick={toggle}
+              className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
+            >
+              {viewMode === 'mine' ? '查看全团队' : '只看我的'}
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <Search className="w-4 h-4 text-zinc-400" />
             <Input
@@ -512,6 +531,17 @@ export default function TasksPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-start gap-1">
+                          {isManager && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setAssignTarget(task.id)}
+                              className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                              title="分派"
+                            >
+                              <span className="text-xs">派</span>
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -538,6 +568,18 @@ export default function TasksPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 分派对话框 */}
+      {sortedTasks.map(task => (
+        <AssignDialog
+          key={task.id}
+          open={assignTarget === task.id}
+          onClose={() => setAssignTarget(null)}
+          resourceType="task"
+          resourceId={task.id}
+          onSuccess={loadData}
+        />
+      ))}
     </div>
   )
 }

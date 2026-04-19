@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '@/lib/supabase/queries'
@@ -14,6 +14,8 @@ import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import type { Customer } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
+import { useTeamView } from '@/hooks/useTeamView'
+import { AssignDialog } from '@/components/admin/AssignDialog'
 
 export default function CustomersPage() {
   const router = useRouter()
@@ -22,6 +24,9 @@ export default function CustomersPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [assignTarget, setAssignTarget] = useState<string | null>(null)
+  const [isManager, setIsManager] = useState(false)
+  const { viewMode, toggle } = useTeamView()
   const [formData, setFormData] = useState({
     name: '',
     company: '',
@@ -31,19 +36,25 @@ export default function CustomersPage() {
   })
 
   useEffect(() => {
-    loadCustomers()
+    fetch('/api/me').then(r => r.json()).then(d => {
+      setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
+    })
   }, [])
 
-  const loadCustomers = async () => {
+  const loadCustomers = useCallback(async () => {
     try {
-      const data = await getCustomers()
+      const data = await getCustomers({ teamView: viewMode === 'team' })
       setCustomers(data)
     } catch (error: any) {
       toast.error('加载客户列表失败')
     } finally {
       setLoading(false)
     }
-  }
+  }, [viewMode])
+
+  useEffect(() => {
+    loadCustomers()
+  }, [loadCustomers])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -142,7 +153,15 @@ export default function CustomersPage() {
           <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">客户管理</h1>
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {isManager && (
+            <button
+              onClick={toggle}
+              className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
+            >
+              {viewMode === 'mine' ? '查看全团队' : '只看我的'}
+            </button>
+          )}
           <Button
             onClick={() => setImportDialogOpen(true)}
             className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm"
@@ -249,6 +268,17 @@ export default function CustomersPage() {
                     )}
                   </div>
                   <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isManager && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setAssignTarget(customer.id)}
+                        className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                        title="分派"
+                      >
+                        <span className="text-xs">派</span>
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -291,6 +321,18 @@ export default function CustomersPage() {
           ))}
         </div>
       )}
+
+      {/* 分派对话框 */}
+      {customers.map(customer => (
+        <AssignDialog
+          key={customer.id}
+          open={assignTarget === customer.id}
+          onClose={() => setAssignTarget(null)}
+          resourceType="customer"
+          resourceId={customer.id}
+          onSuccess={loadCustomers}
+        />
+      ))}
 
       {/* 批量导入对话框 */}
       <ImportDialog

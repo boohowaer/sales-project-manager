@@ -20,13 +20,19 @@ type SettlementStageInsert = Omit<SettlementStage, 'id' | 'created_at' | 'update
 type SettlementStageUpdate = Partial<Omit<SettlementStage, 'id' | 'created_at' | 'updated_at'>>
 
 // 客户相关查询
-export async function getCustomers(): Promise<Customer[]> {
+export async function getCustomers(options?: { teamView?: boolean }): Promise<Customer[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('customers')
     .select('*')
     .order('created_at', { ascending: false })
 
+  if (!options?.teamView) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) query = query.eq('user_id', user.id)
+  }
+
+  const { data, error } = await query
   if (error) throw error
   return data || []
 }
@@ -90,14 +96,20 @@ export async function deleteCustomer(id: string): Promise<void> {
 }
 
 // 项目相关查询
-export async function getProjects(): Promise<any[]> {
+export async function getProjects(options?: { teamView?: boolean }): Promise<any[]> {
   const supabase = await createClient()
 
-  // 先查询项目和客户
-  const { data: projects, error: projectsError } = await supabase
+  let projectQuery = supabase
     .from('projects')
     .select('*, customers(*)')
     .order('created_at', { ascending: false })
+
+  if (!options?.teamView) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) projectQuery = projectQuery.eq('user_id', user.id)
+  }
+
+  const { data: projects, error: projectsError } = await projectQuery
 
   if (projectsError) throw projectsError
   if (!projects || projects.length === 0) return []
@@ -255,13 +267,19 @@ export async function deleteProject(id: string): Promise<void> {
 }
 
 // 任务相关查询
-export async function getTasks(): Promise<Task[]> {
+export async function getTasks(options?: { teamView?: boolean }): Promise<Task[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('tasks')
     .select('*, projects(*, customers(*))')
     .order('due_date', { ascending: true })
 
+  if (!options?.teamView) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) query = query.eq('user_id', user.id)
+  }
+
+  const { data, error } = await query
   if (error) throw error
   return data || []
 }
