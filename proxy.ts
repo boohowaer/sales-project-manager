@@ -5,17 +5,12 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // 检查环境变量是否存在
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('Missing Supabase environment variables')
-    return NextResponse.next({
-      request,
-    })
+    return NextResponse.next({ request })
   }
 
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     supabaseUrl,
@@ -36,32 +31,50 @@ export async function proxy(request: NextRequest) {
   )
 
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
-                       request.nextUrl.pathname.startsWith('/register')
-
-    const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
+    const pathname = request.nextUrl.pathname
+    const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register')
+    const isDashboard = pathname.startsWith('/dashboard')
 
     if (!user && isDashboard) {
-      // 未登录用户访问仪表板，重定向到登录页
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
 
     if (user && isAuthPage) {
-      // 已登录用户访问登录/注册页，重定向到仪表板
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
+
+    // 超管专属路由保护（成员管理、数据字典）
+    const isSuperAdminRoute =
+      pathname.startsWith('/dashboard/admin/users') ||
+      pathname.startsWith('/dashboard/admin/dictionary')
+
+    if (user && isSuperAdminRoute) {
+      const { data: member } = await supabase
+        .from('team_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single()
+
+      if (!member || member.role !== 'super_admin') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
+    }
   } catch (error) {
-    console.error('Middleware error:', error)
-    // 发生错误时继续，不阻止访问
+    console.error('Proxy error:', error)
   }
 
   return supabaseResponse
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/login', '/register'],
 }
