@@ -49,9 +49,16 @@ export async function createCustomer(customer: CustomerInsert): Promise<Customer
 
   if (!user) throw new Error('User not authenticated')
 
+  const { data: member } = await supabase
+    .from('team_members' as any)
+    .select('team_id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
   const { data, error } = await supabase
     .from('customers')
-    .insert({ ...customer, user_id: user.id } as any)
+    .insert({ ...customer, user_id: user.id, team_id: (member as any)?.team_id ?? null } as any)
     .select()
     .single()
 
@@ -156,9 +163,16 @@ export async function createProject(project: ProjectInsert): Promise<Project> {
 
   if (!user) throw new Error('User not authenticated')
 
+  const { data: memberP } = await supabase
+    .from('team_members' as any)
+    .select('team_id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
   const { data, error } = await supabase
     .from('projects')
-    .insert({ ...project, user_id: user.id } as any)
+    .insert({ ...project, user_id: user.id, team_id: (memberP as any)?.team_id ?? null } as any)
     .select()
     .single()
 
@@ -337,9 +351,16 @@ export async function createTask(task: TaskInsert): Promise<Task> {
 
   if (!user) throw new Error('User not authenticated')
 
+  const { data: memberT } = await supabase
+    .from('team_members' as any)
+    .select('team_id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
   const { data, error } = await supabase
     .from('tasks')
-    .insert({ ...task, user_id: user.id } as any)
+    .insert({ ...task, user_id: user.id, team_id: (memberT as any)?.team_id ?? null } as any)
     .select()
     .single()
 

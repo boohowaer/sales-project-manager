@@ -265,3 +265,71 @@ export type TaskUpdate = Database['public']['Tables']['tasks']['Update']
 export type UserSettingsUpdate = Database['public']['Tables']['user_settings']['Update']
 export type SettlementStageUpdate = Database['public']['Tables']['settlement_stages']['Update']
 export type WeeklyUpdateUpdate = Database['public']['Tables']['weekly_updates']['Update']
+
+// ─── Team types ───────────────────────────────────────────────
+
+export type TeamRole = 'super_admin' | 'sales_manager' | 'sales_rep'
+
+export type Team = {
+  id: string
+  name: string
+  created_by: string | null
+  created_at: string
+}
+
+export type TeamMember = {
+  id: string
+  team_id: string
+  user_id: string
+  role: TeamRole
+  status: 'active' | 'disabled'
+  invited_by: string | null
+  joined_at: string
+}
+
+export type TeamInvitation = {
+  id: string
+  team_id: string
+  email: string
+  role: TeamRole
+  token: string
+  invited_by: string | null
+  expires_at: string
+  used_at: string | null
+  created_at: string
+}
+
+export type AssignmentLog = {
+  id: string
+  team_id: string
+  resource_type: 'customer' | 'project' | 'task'
+  resource_id: string
+  assigned_from: string | null
+  assigned_to: string
+  operated_by: string
+  created_at: string
+}
+
+export type ApprovalRequestType = 'create_customer' | 'create_project' | 'update_project'
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
+
+export type ApprovalRequest = {
+  id: string
+  team_id: string
+  type: ApprovalRequestType
+  target_id: string | null
+  payload: Record<string, unknown>
+  submitted_by: string
+  reviewed_by: string | null
+  status: ApprovalStatus
+  reject_reason: string | null
+  created_at: string
+  reviewed_at: string | null
+}
+
+export type UserTeamContext = {
+  teamId: string
+  teamName: string
+  role: TeamRole
+  userId: string
+}
