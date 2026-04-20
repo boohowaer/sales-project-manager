@@ -325,6 +325,8 @@ export type ApprovalRequest = {
   reviewed_by: string | null
   status: ApprovalStatus
   reject_reason: string | null
+  current_step: number
+  total_steps: number
   created_at: string
   reviewed_at: string | null
 }
