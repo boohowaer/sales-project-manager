@@ -237,7 +237,7 @@ export default function DashboardPage() {
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen(!notifOpen)}
-              title="信息提醒"
+              title="任务提醒"
               className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-900 transition-colors group"
             >
               <Bell className="w-5 h-5 text-zinc-600 group-hover:text-white" />
@@ -248,7 +248,7 @@ export default function DashboardPage() {
             {notifOpen && (
               <div className="absolute right-0 top-full mt-2 w-80 max-h-[480px] overflow-y-auto bg-white rounded-2xl shadow-xl border-0 z-50">
                 <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
-                  <h3 className="font-semibold text-zinc-900">信息提醒</h3>
+                  <h3 className="font-semibold text-zinc-900">任务提醒</h3>
                   <button onClick={() => setNotifOpen(false)} className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-zinc-100 transition-colors">
                     <X className="w-4 h-4 text-zinc-400" />
                   </button>
