@@ -19,11 +19,20 @@ function StatusBadge({ status }: { status: string }) {
     approved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     rejected: 'bg-rose-100 text-rose-700 border-rose-200',
   }
-  const labels: Record<string, string> = { pending: '待审批', approved: '已通过', rejected: '已驳回' }
+  const labels: Record<string, string> = { pending: '审批中', approved: '已通过', rejected: '已驳回' }
   return (
     <Badge className={`rounded-full text-xs border ${map[status] ?? ''}`}>
       {labels[status] ?? status}
     </Badge>
+  )
+}
+
+function StepBadge({ current, total }: { current: number; total: number }) {
+  if (total <= 1) return null
+  return (
+    <span className="text-xs text-zinc-400 bg-zinc-100 rounded-full px-2 py-0.5">
+      第{current}步 / 共{total}步
+    </span>
   )
 }
 
@@ -51,6 +60,7 @@ function ApprovalCard({
           <Badge variant="outline" className="rounded-full text-xs">
             {TYPE_LABELS[req.type] ?? req.type}
           </Badge>
+          <StepBadge current={req.current_step} total={req.total_steps} />
           <span className="text-xs text-zinc-500">
             {new Date(req.created_at).toLocaleString('zh-CN')}
           </span>
@@ -135,6 +145,17 @@ export default function ApprovalsPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
+  function isMyTurn(req: ApprovalRequest): boolean {
+    if (req.status !== 'pending') return false
+    if (role === 'sales_manager') {
+      return req.current_step === 1
+    }
+    if (role === 'super_admin') {
+      return req.current_step === req.total_steps
+    }
+    return false
+  }
+
   async function handleApprove(id: string) {
     setLoading(id)
     const res = await fetch(`/api/approvals/${id}`, {
@@ -175,7 +196,7 @@ export default function ApprovalsPage() {
     }
   }
 
-  const pendingForMe = requests.filter(r => r.status === 'pending')
+  const pendingForMe = requests.filter(r => isMyTurn(r))
   const tabs = [
     ...(isManager ? [{ key: 'pending' as const, label: `待我处理 (${pendingForMe.length})` }] : []),
     { key: 'mine' as const, label: '我发起的' },
@@ -196,7 +217,6 @@ export default function ApprovalsPage() {
         <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
       </div>
 
-      {/* Tab 切换 */}
       <div className="flex gap-2 mb-6">
         {tabs.map(t => (
           <button
@@ -213,7 +233,6 @@ export default function ApprovalsPage() {
         ))}
       </div>
 
-      {/* 列表 */}
       {displayRequests.length === 0 ? (
         <Card className="rounded-2xl shadow-sm border-0 bg-white">
           <CardContent className="text-center py-16">
@@ -226,7 +245,7 @@ export default function ApprovalsPage() {
             <ApprovalCard
               key={req.id}
               req={req}
-              canApprove={isManager && req.status === 'pending'}
+              canApprove={isMyTurn(req)}
               canUrge={activeTab === 'mine' && req.status === 'pending' && req.submitted_by === userId}
               onApprove={handleApprove}
               onReject={id => setRejectTarget(id)}
