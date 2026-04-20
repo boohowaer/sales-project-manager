@@ -22,14 +22,26 @@ type SettlementStageUpdate = Partial<Omit<SettlementStage, 'id' | 'created_at' |
 // 客户相关查询
 export async function getCustomers(options?: { teamView?: boolean }): Promise<Customer[]> {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: member } = await supabase
+    .from('team_members' as any)
+    .select('data_scope')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  const dataScope = (member as any)?.data_scope ?? 'own'
+
   let query = supabase
     .from('customers')
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (!options?.teamView) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) query = query.eq('user_id', user.id)
+  if (dataScope === 'own' || !options?.teamView) {
+    query = query.eq('user_id', user.id)
   }
 
   const { data, error } = await query
@@ -99,14 +111,25 @@ export async function deleteCustomer(id: string): Promise<void> {
 export async function getProjects(options?: { teamView?: boolean }): Promise<any[]> {
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: member } = await supabase
+    .from('team_members' as any)
+    .select('data_scope')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  const dataScope = (member as any)?.data_scope ?? 'own'
+
   let projectQuery = supabase
     .from('projects')
     .select('*, customers(*)')
     .order('created_at', { ascending: false })
 
-  if (!options?.teamView) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) projectQuery = projectQuery.eq('user_id', user.id)
+  if (dataScope === 'own' || !options?.teamView) {
+    projectQuery = projectQuery.eq('user_id', user.id)
   }
 
   const { data: projects, error: projectsError } = await projectQuery
@@ -269,14 +292,26 @@ export async function deleteProject(id: string): Promise<void> {
 // 任务相关查询
 export async function getTasks(options?: { teamView?: boolean }): Promise<Task[]> {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: member } = await supabase
+    .from('team_members' as any)
+    .select('data_scope')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  const dataScope = (member as any)?.data_scope ?? 'own'
+
   let query = supabase
     .from('tasks')
     .select('*, projects(*, customers(*))')
     .order('due_date', { ascending: true })
 
-  if (!options?.teamView) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) query = query.eq('user_id', user.id)
+  if (dataScope === 'own' || !options?.teamView) {
+    query = query.eq('user_id', user.id)
   }
 
   const { data, error } = await query

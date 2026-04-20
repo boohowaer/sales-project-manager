@@ -12,19 +12,36 @@ export async function getTeamMembers(teamId: string): Promise<(TeamMember & { em
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('team_members')
-    .select('*, users:user_id(email)')
+    .select('*')
     .eq('team_id', teamId)
     .order('joined_at', { ascending: true })
   if (error) throw error
-  return (data || []).map((m: any) => ({
+  const members = data || []
+
+  // 批量获取 email（auth.users 需要用 admin API）
+  const userIds = members.map((m: any) => m.user_id)
+  const emailMap: Record<string, string> = {}
+  await Promise.all(
+    userIds.map(async (uid: string) => {
+      const { data: user } = await supabase.auth.admin.getUserById(uid)
+      if (user?.user) emailMap[uid] = user.user.email ?? ''
+    })
+  )
+
+  return members.map((m: any) => ({
     ...m,
-    email: (m.users as { email: string } | null)?.email ?? '',
+    email: emailMap[m.user_id] ?? '',
   }))
 }
 
 export async function updateMember(
   memberId: string,
-  updates: { role?: TeamMember['role']; status?: 'active' | 'disabled' }
+  updates: {
+    role?: TeamMember['role']
+    status?: 'active' | 'disabled'
+    data_scope?: 'own' | 'team'
+    approval_cc?: boolean
+  }
 ): Promise<void> {
   const supabase = createAdminClient()
   const { error } = await supabase
@@ -125,15 +142,21 @@ export async function getTeamActiveMembers(teamId: string): Promise<{ id: string
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('team_members')
-    .select('id, user_id, role, users:user_id(email)')
+    .select('id, user_id, role')
     .eq('team_id', teamId)
     .eq('status', 'active')
   if (error) throw error
-  return (data || []).map((m: any) => ({
+  const members = data || []
+
+  const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers()
+  if (usersError) throw usersError
+  const emailMap = new Map(users.map(u => [u.id, u.email ?? '']))
+
+  return members.map((m: any) => ({
     id: m.id,
     user_id: m.user_id,
     role: m.role,
-    email: (m.users as { email: string } | null)?.email ?? '',
+    email: emailMap.get(m.user_id) ?? '',
   }))
 }
 
