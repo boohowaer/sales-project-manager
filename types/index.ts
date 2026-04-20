@@ -285,6 +285,8 @@ export type TeamMember = {
   status: 'active' | 'disabled'
   invited_by: string | null
   joined_at: string
+  data_scope: 'own' | 'team'
+  approval_cc: boolean
 }
 
 export type TeamInvitation = {
@@ -332,4 +334,32 @@ export type UserTeamContext = {
   teamName: string
   role: TeamRole
   userId: string
+  dataScope: 'own' | 'team'
+  approvalCc: boolean
+}
+
+export type InboxNotificationType =
+  | 'task_overdue'
+  | 'task_upcoming'
+  | 'milestone'
+  | 'approval_submitted'
+  | 'approval_approved'
+  | 'approval_rejected'
+  | 'approval_cc'
+  | 'approval_urge'
+  | 'approval_urge_received'
+
+export type InboxLinkType = 'task' | 'approval' | 'project'
+
+export type InboxNotification = {
+  id: string
+  user_id: string
+  type: InboxNotificationType
+  title: string
+  body: string | null
+  link_type: InboxLinkType | null
+  link_id: string | null
+  is_read: boolean
+  browser_pushed: boolean
+  created_at: string
 }
