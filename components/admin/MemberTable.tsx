@@ -23,8 +23,9 @@ const ROLE_LABELS: Record<TeamRole, string> = {
   sales_rep: '普通销售',
 }
 
-export function MemberTable({ members, onUpdate, currentUserId }: {
+export function MemberTable({ members, loading: tableLoading, onUpdate, currentUserId }: {
   members: Member[]
+  loading?: boolean
   onUpdate: () => void
   currentUserId: string | null
 }) {
@@ -45,19 +46,27 @@ export function MemberTable({ members, onUpdate, currentUserId }: {
     <Card className="rounded-2xl shadow-sm border-0 bg-white">
       <CardContent className="p-0">
         <table className="w-full text-sm">
-          <thead className="bg-white border-b border-zinc-200">
+          <thead className="bg-zinc-50 border-b border-zinc-100">
             <tr>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase">邮箱</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase">角色</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase">数据范围</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase">审批抄送</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase">状态</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase">加入时间</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase">操作</th>
+              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide first:rounded-tl-2xl">邮箱</th>
+              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">角色</th>
+              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">数据范围</th>
+              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">审批抄送</th>
+              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">状态</th>
+              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">加入时间</th>
+              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide last:rounded-tr-2xl">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {members.map(m => {
+            {tableLoading ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-16 text-center text-zinc-400 text-sm">加载中...</td>
+              </tr>
+            ) : members.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-16 text-center text-zinc-400 text-sm">暂无成员</td>
+              </tr>
+            ) : members.map(m => {
               const isManager = m.role === 'super_admin' || m.role === 'sales_manager'
               return (
                 <tr key={m.id} className="hover:bg-zinc-50 transition-colors">
@@ -140,11 +149,6 @@ export function MemberTable({ members, onUpdate, currentUserId }: {
                 </tr>
               )
             })}
-            {members.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-16 text-center text-zinc-400 text-sm">暂无成员</td>
-              </tr>
-            )}
           </tbody>
         </table>
       </CardContent>
