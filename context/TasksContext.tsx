@@ -73,7 +73,7 @@ async function writeTaskNotifications(
       toWrite.push({
         type: 'task_overdue',
         title: '任务已过期',
-        body: `「${task.title}」已过期`,
+        body: `「${task.title}」已过期${task.projects?.name ? `（${task.projects.name}）` : ''}`,
         linkId: task.id,
       })
       newIds.push(sid)
@@ -89,7 +89,7 @@ async function writeTaskNotifications(
       toWrite.push({
         type: 'task_upcoming',
         title: '任务即将到期',
-        body: `「${task.title}」即将在 ${dateStr} 到期`,
+        body: `「${task.title}」即将在 ${dateStr} 到期${task.projects?.name ? `（${task.projects.name}）` : ''}`,
         linkId: task.id,
       })
       newIds.push(sid)
