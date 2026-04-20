@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className="h-full antialiased" suppressHydrationWarning>
-      <head>
+      <body className={`${poppins.variable} min-h-full flex flex-col`}>
         <Script id="font-init" strategy="beforeInteractive">{`
           try {
             var s = localStorage.getItem('fontSettings');
@@ -39,8 +39,6 @@ export default function RootLayout({
             document.documentElement.style.fontSize = '15px';
           }
         `}</Script>
-      </head>
-      <body className={`${poppins.variable} min-h-full flex flex-col`}>
         <FontProvider>
           {children}
         </FontProvider>
