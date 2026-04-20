@@ -45,16 +45,25 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
   return (
     <Card className="rounded-2xl shadow-sm border-0 bg-white">
       <CardContent className="p-0">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-32" />
+          </colgroup>
           <thead className="bg-white border-b border-zinc-200">
             <tr>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase rounded-tl-2xl">邮箱</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-36">角色</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28">数据范围</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-24">审批抄送</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-24">状态</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28">加入时间</th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-20 rounded-tr-2xl">操作</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase rounded-tl-2xl whitespace-nowrap">邮箱</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase whitespace-nowrap">角色</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase whitespace-nowrap">数据范围</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase whitespace-nowrap">审批抄送</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase whitespace-nowrap">状态</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase whitespace-nowrap">加入时间</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase rounded-tr-2xl whitespace-nowrap">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -70,8 +79,8 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
               const isManager = m.role === 'super_admin' || m.role === 'sales_manager'
               return (
                 <tr key={m.id} className="hover:bg-zinc-50 transition-colors">
-                  <td className="px-4 py-3 text-zinc-900">{m.email}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-zinc-900 truncate">{m.email}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <Select
                       value={m.role}
                       disabled={loading === m.id || m.user_id === currentUserId}
@@ -87,7 +96,7 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     {isManager ? (
                       <span className="text-xs text-zinc-400">全团队</span>
                     ) : (
@@ -106,7 +115,7 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
                       </Select>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     {isManager ? (
                       <span className="text-xs text-zinc-400">已有审批权</span>
                     ) : (
@@ -123,15 +132,15 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
                       </button>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <Badge className={`rounded-full text-xs border ${m.status === 'active' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
                       {m.status === 'active' ? '正常' : '已禁用'}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 text-xs">
+                  <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">
                     {new Date(m.joined_at).toLocaleDateString('zh-CN')}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     {m.user_id === currentUserId ? (
                       <span className="text-xs text-zinc-400">（自己）</span>
                     ) : (
