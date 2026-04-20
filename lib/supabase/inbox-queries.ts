@@ -138,3 +138,18 @@ export async function getTeamSuperAdmins(teamId: string): Promise<string[]> {
     .eq('status', 'active')
   return data?.map(m => m.user_id) ?? []
 }
+
+export async function deleteNotificationsByLink(
+  userId: string,
+  linkType: InboxLinkType,
+  linkId: string
+): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('inbox_notifications')
+    .delete()
+    .eq('user_id', userId)
+    .eq('link_type', linkType)
+    .eq('link_id', linkId)
+  if (error) throw error
+}
