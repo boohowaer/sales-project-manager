@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Pencil, Trash2, Coins, Search, Filter, X, CheckSquare, RotateCcw, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, Coins, Search, Filter, X, CheckSquare, RotateCcw, Upload, UserPlus } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Project, Customer } from '@/types'
@@ -56,6 +56,7 @@ export default function ProjectsPage() {
   const { viewMode, toggle } = useTeamView()
   const [isManager, setIsManager] = useState(false)
   const [isSalesRep, setIsSalesRep] = useState(false)
+  const [dataScope, setDataScope] = useState<'own' | 'team'>('own')
   const [assignTarget, setAssignTarget] = useState<string | null>(null)
   const [projects, setProjects] = useState<any[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -168,6 +169,7 @@ export default function ProjectsPage() {
     fetch('/api/me').then(r => r.json()).then(d => {
       setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
       setIsSalesRep(d.role === 'sales_rep')
+      setDataScope(d.dataScope ?? 'own')
     })
   }, [])
 
@@ -628,7 +630,7 @@ export default function ProjectsPage() {
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有销售项目</p>
         </div>
         <div className="flex gap-2 items-center">
-          {isManager && (
+          {dataScope === 'team' && (
             <button
               onClick={toggle}
               className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
@@ -1123,7 +1125,7 @@ export default function ProjectsPage() {
                         onClick={() => setAssignTarget(project.id)}
                         title="分派"
                       >
-                        <span className="text-xs">派</span>
+                        <UserPlus className="w-4 h-4" />
                       </Button>
                     )}
                     <Button

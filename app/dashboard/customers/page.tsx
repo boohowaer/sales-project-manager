@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload, UserPlus } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import type { Customer } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
@@ -27,6 +27,7 @@ export default function CustomersPage() {
   const [assignTarget, setAssignTarget] = useState<string | null>(null)
   const [isManager, setIsManager] = useState(false)
   const [isSalesRep, setIsSalesRep] = useState(false)
+  const [dataScope, setDataScope] = useState<'own' | 'team'>('own')
   const { viewMode, toggle } = useTeamView()
   const [formData, setFormData] = useState({
     name: '',
@@ -40,6 +41,7 @@ export default function CustomersPage() {
     fetch('/api/me').then(r => r.json()).then(d => {
       setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
       setIsSalesRep(d.role === 'sales_rep')
+      setDataScope(d.dataScope ?? 'own')
     })
   }, [])
 
@@ -166,7 +168,7 @@ export default function CustomersPage() {
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
         </div>
         <div className="flex gap-2 items-center">
-          {isManager && (
+          {dataScope === 'team' && (
             <button
               onClick={toggle}
               className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
@@ -288,7 +290,7 @@ export default function CustomersPage() {
                         className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                         title="分派"
                       >
-                        <span className="text-xs">派</span>
+                        <UserPlus className="w-4 h-4" />
                       </Button>
                     )}
                     <Button

@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Trash2, Check, Pencil, Search } from 'lucide-react'
+import { Plus, Trash2, Check, Pencil, Search, UserPlus } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Task, Project } from '@/types'
@@ -27,6 +27,7 @@ export default function TasksPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchKeyword, setSearchKeyword] = useState<string>('')
   const [isManager, setIsManager] = useState(false)
+  const [dataScope, setDataScope] = useState<'own' | 'team'>('own')
   const [assignTarget, setAssignTarget] = useState<string | null>(null)
   const { viewMode, toggle } = useTeamView()
   const [formData, setFormData] = useState({
@@ -41,6 +42,7 @@ export default function TasksPage() {
   useEffect(() => {
     fetch('/api/me').then(r => r.json()).then(d => {
       setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
+      setDataScope(d.dataScope ?? 'own')
     })
 
     // 检查是否需要自动打开任务创建对话框
@@ -289,7 +291,7 @@ export default function TasksPage() {
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有待办任务</p>
         </div>
         <div className="flex gap-2">
-          {isManager && (
+          {dataScope === 'team' && (
             <button
               onClick={toggle}
               className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
@@ -539,7 +541,7 @@ export default function TasksPage() {
                               className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
                               title="分派"
                             >
-                              <span className="text-xs">派</span>
+                              <UserPlus className="w-4 h-4" />
                             </Button>
                           )}
                           <Button
@@ -570,16 +572,13 @@ export default function TasksPage() {
       </Card>
 
       {/* 分派对话框 */}
-      {sortedTasks.map(task => (
-        <AssignDialog
-          key={task.id}
-          open={assignTarget === task.id}
-          onClose={() => setAssignTarget(null)}
-          resourceType="task"
-          resourceId={task.id}
-          onSuccess={loadData}
-        />
-      ))}
+      <AssignDialog
+        open={assignTarget !== null}
+        onClose={() => setAssignTarget(null)}
+        resourceType="task"
+        resourceId={assignTarget ?? ''}
+        onSuccess={loadData}
+      />
     </div>
   )
 }
