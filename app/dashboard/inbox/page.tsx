@@ -43,9 +43,11 @@ function timeAgo(dateStr: string): string {
 function NotifItem({
   notif,
   onMarkRead,
+  onRemoveByLink,
 }: {
   notif: InboxNotification
   onMarkRead: (id: string) => void
+  onRemoveByLink: (linkType: string, linkId: string) => void
 }) {
   const router = useRouter()
   const target = LINK_TARGETS[notif.type]
@@ -82,7 +84,14 @@ function NotifItem({
         <button
           onClick={async e => {
             e.stopPropagation()
-            await doMarkRead()
+            if (notif.link_type === 'task' && notif.link_id) {
+              await fetch(`/api/inbox/by-link?linkType=task&linkId=${notif.link_id}`, {
+                method: 'DELETE',
+              })
+              onRemoveByLink('task', notif.link_id)
+            } else {
+              await doMarkRead()
+            }
             router.push(target)
           }}
           className="shrink-0 flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900 transition-colors mt-0.5"
@@ -109,6 +118,10 @@ export default function InboxPage() {
 
   const markRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+  }
+
+  const removeByLink = (linkType: string, linkId: string) => {
+    setNotifications(prev => prev.filter(n => !(n.link_type === linkType && n.link_id === linkId)))
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length
@@ -152,7 +165,7 @@ export default function InboxPage() {
       ) : (
         <div className="space-y-2">
           {displayed.map(n => (
-            <NotifItem key={n.id} notif={n} onMarkRead={markRead} />
+            <NotifItem key={n.id} notif={n} onMarkRead={markRead} onRemoveByLink={removeByLink} />
           ))}
         </div>
       )}
