@@ -23,6 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        {/* 在 hydration 前从 localStorage 读取字体设置，避免刷新时晃动 */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var s=localStorage.getItem('fontSettings');if(s){var f=JSON.parse(s);if(f.fontFamily)document.documentElement.style.fontFamily=f.fontFamily;if(f.fontSize)document.documentElement.style.fontSize=f.fontSize+'px';}}catch(e){}})()`}} />
+      </head>
       <body className={`${poppins.variable} min-h-full flex flex-col`}>
         <FontProvider>
           {children}

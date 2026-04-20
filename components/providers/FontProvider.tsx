@@ -9,8 +9,8 @@ interface FontContextType {
 }
 
 const FontContext = createContext<FontContextType>({
-  fontFamily: 'Poppins, Inter',
-  fontSize: 15
+  fontFamily: 'Inter',
+  fontSize: 14
 })
 
 function getLocalFontSettings(): { fontFamily: string; fontSize: number } {
@@ -19,12 +19,12 @@ function getLocalFontSettings(): { fontFamily: string; fontSize: number } {
     if (raw) {
       const f = JSON.parse(raw)
       return {
-        fontFamily: f.fontFamily || 'Poppins, Inter',
-        fontSize: f.fontSize || 15,
+        fontFamily: f.fontFamily || 'Inter',
+        fontSize: f.fontSize || 14,
       }
     }
   } catch {}
-  return { fontFamily: 'Poppins, Inter', fontSize: 15 }
+  return { fontFamily: 'Inter', fontSize: 14 }
 }
 
 function applyFontSettings(font: string, size: number) {
@@ -33,8 +33,8 @@ function applyFontSettings(font: string, size: number) {
 }
 
 export function FontProvider({ children }: { children: React.ReactNode }) {
-  const [fontFamily, setFontFamily] = useState('Poppins, Inter')
-  const [fontSize, setFontSize] = useState(15)
+  const [fontFamily, setFontFamily] = useState('Inter')
+  const [fontSize, setFontSize] = useState(14)
 
   useEffect(() => {
     // 立即从 localStorage 应用，避免闪烁
@@ -46,8 +46,8 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
     // 再从数据库同步最新值
     getUserSettings().then(settings => {
       if (!settings) return
-      const font = settings.font_family || 'Poppins, Inter'
-      const size = settings.font_size || 15
+      const font = settings.font_family || 'Inter'
+      const size = settings.font_size || 14
       setFontFamily(font)
       setFontSize(size)
       applyFontSettings(font, size)
