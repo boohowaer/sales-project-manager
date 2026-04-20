@@ -137,13 +137,14 @@ export async function urgeRequest(params: {
   const supabase = createAdminClient()
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-  const { data: recent } = await supabase
+  const { data: recent, error: queryError } = await supabase
     .from('approval_urge_log')
     .select('urged_at')
     .eq('approval_id', params.approvalId)
     .gte('urged_at', since)
     .order('urged_at', { ascending: false })
     .limit(1)
+  if (queryError) throw queryError
 
   if (recent && recent.length > 0) {
     const nextAllowedAt = new Date(
@@ -162,11 +163,12 @@ export async function urgeRequest(params: {
 
 export async function getLastUrge(approvalId: string): Promise<string | null> {
   const supabase = createAdminClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('approval_urge_log')
     .select('urged_at')
     .eq('approval_id', approvalId)
     .order('urged_at', { ascending: false })
     .limit(1)
+  if (error) throw error
   return data?.[0]?.urged_at ?? null
 }
