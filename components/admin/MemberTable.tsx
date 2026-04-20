@@ -48,7 +48,7 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
         <table className="w-full text-sm table-fixed">
           <colgroup>
             <col />
-            <col className="w-[152px]" />
+            <col className="w-40" />
             <col className="w-32" />
             <col className="w-32" />
             <col className="w-32" />
