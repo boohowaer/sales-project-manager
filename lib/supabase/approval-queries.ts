@@ -118,3 +118,55 @@ export async function rejectRequest(id: string, reviewedBy: string, rejectReason
     .eq('id', id)
   if (error) throw error
 }
+
+export async function getAllRequests(teamId: string): Promise<ApprovalRequest[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('approval_requests')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function urgeRequest(params: {
+  approvalId: string
+  urgedBy: string
+}): Promise<{ ok: true } | { error: 'cooldown'; nextAllowedAt: string }> {
+  const supabase = createAdminClient()
+
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data: recent } = await supabase
+    .from('approval_urge_log')
+    .select('urged_at')
+    .eq('approval_id', params.approvalId)
+    .gte('urged_at', since)
+    .order('urged_at', { ascending: false })
+    .limit(1)
+
+  if (recent && recent.length > 0) {
+    const nextAllowedAt = new Date(
+      new Date(recent[0].urged_at).getTime() + 24 * 60 * 60 * 1000
+    ).toISOString()
+    return { error: 'cooldown', nextAllowedAt }
+  }
+
+  const { error } = await supabase
+    .from('approval_urge_log')
+    .insert({ approval_id: params.approvalId, urged_by: params.urgedBy })
+  if (error) throw error
+
+  return { ok: true }
+}
+
+export async function getLastUrge(approvalId: string): Promise<string | null> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('approval_urge_log')
+    .select('urged_at')
+    .eq('approval_id', approvalId)
+    .order('urged_at', { ascending: false })
+    .limit(1)
+  return data?.[0]?.urged_at ?? null
+}
