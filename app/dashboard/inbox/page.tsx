@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Bell, CheckCircle, Clock, AlertCircle, ClipboardCheck, FolderKanban, ArrowRight } from 'lucide-react'
+import { Bell, Clock, AlertCircle, ClipboardCheck, FolderKanban, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { InboxNotification } from '@/types'
 
@@ -153,30 +152,18 @@ export default function InboxPage() {
       {loading ? (
         <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
       ) : notifications.length === 0 ? (
-        <Card className="rounded-2xl shadow-sm border-0 bg-white">
-          <CardContent className="text-center py-16">
-            <CheckCircle className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
-            <p className="text-zinc-400 text-sm">暂无通知</p>
-          </CardContent>
-        </Card>
+        <p className="text-center py-16 text-zinc-400 text-sm">暂无通知</p>
       ) : (
-        <>
+        <div className="space-y-2">
+          {notifications.map(n => (
+            <div key={n.id} className={tab === 'unread' && n.is_read ? 'hidden' : ''}>
+              <NotifItem notif={n} onMarkRead={markRead} onRemoveByLink={removeByLink} />
+            </div>
+          ))}
           {tab === 'unread' && unreadCount === 0 && (
-            <Card className="rounded-2xl shadow-sm border-0 bg-white">
-              <CardContent className="text-center py-16">
-                <CheckCircle className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
-                <p className="text-zinc-400 text-sm">暂无未读通知</p>
-              </CardContent>
-            </Card>
+            <p className="text-center py-8 text-zinc-400 text-sm">暂无未读通知</p>
           )}
-          <div className="space-y-2">
-            {notifications.map(n => (
-              <div key={n.id} className={tab === 'unread' && n.is_read ? 'hidden' : ''}>
-                <NotifItem notif={n} onMarkRead={markRead} onRemoveByLink={removeByLink} />
-              </div>
-            ))}
-          </div>
-        </>
+        </div>
       )}
     </div>
   )
