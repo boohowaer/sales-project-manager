@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getUserTeamContext } from '@/lib/auth/get-user-role'
-import { submitApprovalRequest, getPendingRequests, getMyRequests } from '@/lib/supabase/approval-queries'
+import { getUserTeamContext, isManager } from '@/lib/auth/get-user-role'
+import { submitApprovalRequest, getPendingRequests, getMyRequests, getAllRequests } from '@/lib/supabase/approval-queries'
 
 export async function GET(request: Request) {
   const ctx = await getUserTeamContext()
@@ -14,11 +14,14 @@ export async function GET(request: Request) {
     return NextResponse.json(requests)
   }
 
-  if (ctx.role === 'sales_rep') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // manager 或 approval_cc 用户可查看全部审批
+  if (isManager(ctx.role) || ctx.approvalCc) {
+    const requests = await getAllRequests(ctx.teamId)
+    return NextResponse.json(requests)
   }
 
-  const requests = await getPendingRequests(ctx.teamId)
+  // sales_rep 无 cc 权限时只能看自己的
+  const requests = await getMyRequests(ctx.userId)
   return NextResponse.json(requests)
 }
 
