@@ -11,7 +11,8 @@ export function BrowserNotificationProvider({ children }: { children: React.Reac
       if (Notification.permission === 'default') {
         await Notification.requestPermission()
       }
-      pushUnpushed()
+      // 等待 TasksContext 等异步写入完成后再补推
+      setTimeout(pushUnpushed, 2000)
     }
 
     async function pushUnpushed() {

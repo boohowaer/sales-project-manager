@@ -98,6 +98,9 @@ async function writeTaskNotifications(
 
   if (toWrite.length === 0) return
 
+  // 先标记，防止并发重复写入
+  markWrittenToday(newIds)
+
   await Promise.all(
     toWrite.map(n =>
       fetch('/api/inbox', {
@@ -113,8 +116,6 @@ async function writeTaskNotifications(
       })
     )
   )
-
-  markWrittenToday(newIds)
 }
 
 export function TasksProvider({ children }: TasksProviderProps) {

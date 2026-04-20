@@ -150,6 +150,10 @@ export default function DashboardPage() {
       })
 
       if (milestoneWrites.length > 0) {
+        // 先标记，防止并发重复写入
+        const updated = new Set([...writtenMilestones, ...newMilestoneIds])
+        localStorage.setItem(milestoneKey, JSON.stringify([...updated]))
+
         Promise.all(
           milestoneWrites.map(n =>
             fetch('/api/inbox', {
@@ -158,10 +162,7 @@ export default function DashboardPage() {
               body: JSON.stringify({ type: n.type, title: n.title, body: n.body, linkType: 'project', linkId: n.linkId }),
             })
           )
-        ).then(() => {
-          const updated = new Set([...writtenMilestones, ...newMilestoneIds])
-          localStorage.setItem(milestoneKey, JSON.stringify([...updated]))
-        }).catch(() => {})
+        ).catch(() => {})
       }
     } catch (error: any) {
       toast.error('加载数据失败')
