@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 import { urgeRequest } from '@/lib/supabase/approval-queries'
+import { writeNotifications, getTeamManagers } from '@/lib/supabase/inbox-queries'
 import { createClient } from '@supabase/supabase-js'
 
 function createAdminClient() {
@@ -8,6 +9,12 @@ function createAdminClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  create_customer: '新建客户',
+  create_project: '新建项目',
+  update_project: '修改项目',
 }
 
 export async function POST(
@@ -18,12 +25,10 @@ export async function POST(
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-
-  // 验证该审批是当前用户发起的
   const supabase = createAdminClient()
   const { data: req } = await supabase
     .from('approval_requests')
-    .select('submitted_by, status')
+    .select('submitted_by, status, type, payload')
     .eq('id', id)
     .single()
 
@@ -43,6 +48,21 @@ export async function POST(
       { status: 429 }
     )
   }
+
+  const managers = await getTeamManagers(ctx.teamId)
+  const label = TYPE_LABELS[req.type] ?? req.type
+  const name = (req.payload as Record<string, unknown>)?.name as string ?? ''
+  const subject = name ? `${label}：${name}` : label
+  await writeNotifications(
+    managers.map(uid => ({
+      userId: uid,
+      type: 'approval_urge_received' as const,
+      title: '催办提醒',
+      body: `「${subject}」发起人催你处理`,
+      linkType: 'approval' as const,
+      linkId: id,
+    }))
+  )
 
   return NextResponse.json({ ok: true })
 }
