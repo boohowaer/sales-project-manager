@@ -100,7 +100,68 @@ export default function DashboardPage() {
       }
 
       setMonthlyProjects(buildProjectGroups(future30))
-      setNotifProjects(buildProjectGroups(futureNotif))
+      const notifResult = buildProjectGroups(futureNotif)
+      setNotifProjects(notifResult)
+
+      // 节点提醒写 inbox（每日去重）
+      const milestoneKey = `inbox_milestone_written_${new Date().toISOString().slice(0, 10)}`
+      const writtenMilestones = new Set<string>(
+        JSON.parse(localStorage.getItem(milestoneKey) ?? '[]')
+      )
+      const milestoneWrites: Array<{ type: string; title: string; body: string; linkId: string }> = []
+      const newMilestoneIds: string[] = []
+
+      notifResult.toSign.forEach((p: any) => {
+        const sid = `sign_${p.id}`
+        if (!writtenMilestones.has(sid)) {
+          const dateStr = p.expected_close_date
+            ? new Date(p.expected_close_date).toLocaleDateString('zh-CN') : ''
+          milestoneWrites.push({ type: 'milestone', title: '签约提醒', body: `项目「${p.name}」计划 ${dateStr} 签约`, linkId: p.id })
+          newMilestoneIds.push(sid)
+        }
+      })
+      notifResult.toAccept.forEach((p: any) => {
+        const sid = `accept_${p.id}`
+        if (!writtenMilestones.has(sid)) {
+          const dateStr = p.pendingStages[0]?.planned_accepted_date
+            ? new Date(p.pendingStages[0].planned_accepted_date).toLocaleDateString('zh-CN') : ''
+          milestoneWrites.push({ type: 'milestone', title: '验收提醒', body: `项目「${p.name}」计划 ${dateStr} 验收`, linkId: p.id })
+          newMilestoneIds.push(sid)
+        }
+      })
+      notifResult.toInvoice.forEach((p: any) => {
+        const sid = `invoice_${p.id}`
+        if (!writtenMilestones.has(sid)) {
+          const dateStr = p.pendingStages[0]?.planned_invoiced_date
+            ? new Date(p.pendingStages[0].planned_invoiced_date).toLocaleDateString('zh-CN') : ''
+          milestoneWrites.push({ type: 'milestone', title: '开票提醒', body: `项目「${p.name}」计划 ${dateStr} 开票`, linkId: p.id })
+          newMilestoneIds.push(sid)
+        }
+      })
+      notifResult.toPayment.forEach((p: any) => {
+        const sid = `payment_${p.id}`
+        if (!writtenMilestones.has(sid)) {
+          const dateStr = p.pendingStages[0]?.planned_paid_date
+            ? new Date(p.pendingStages[0].planned_paid_date).toLocaleDateString('zh-CN') : ''
+          milestoneWrites.push({ type: 'milestone', title: '回款提醒', body: `项目「${p.name}」计划 ${dateStr} 回款`, linkId: p.id })
+          newMilestoneIds.push(sid)
+        }
+      })
+
+      if (milestoneWrites.length > 0) {
+        Promise.all(
+          milestoneWrites.map(n =>
+            fetch('/api/inbox', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: n.type, title: n.title, body: n.body, linkType: 'project', linkId: n.linkId }),
+            })
+          )
+        ).then(() => {
+          const updated = new Set([...writtenMilestones, ...newMilestoneIds])
+          localStorage.setItem(milestoneKey, JSON.stringify([...updated]))
+        }).catch(() => {})
+      }
     } catch (error: any) {
       toast.error('加载数据失败')
     } finally {
