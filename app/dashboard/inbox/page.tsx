@@ -62,16 +62,14 @@ function NotifItem({
   return (
     <div
       onClick={doMarkRead}
-      className={`flex items-start gap-3 p-4 rounded-2xl cursor-pointer transition-colors ${
-        notif.is_read ? 'bg-white hover:bg-zinc-50' : 'bg-blue-50 hover:bg-blue-100/60'
-      }`}
+      className="flex items-start gap-3 p-4 rounded-2xl cursor-pointer transition-colors bg-white hover:bg-zinc-50"
     >
       <div className="mt-0.5 shrink-0">
         {TYPE_ICONS[notif.type] ?? <Bell className="w-4 h-4 text-zinc-400" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <p className={`text-sm font-medium truncate ${notif.is_read ? 'text-zinc-700' : 'text-zinc-900'}`}>
+          <p className="text-sm font-medium truncate text-zinc-900">
             {notif.title}
           </p>
           <span className="text-xs text-zinc-400 shrink-0">{timeAgo(notif.created_at)}</span>
