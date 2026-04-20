@@ -116,3 +116,14 @@ export async function getTeamCcUsers(teamId: string): Promise<string[]> {
     .eq('status', 'active')
   return data?.map(m => m.user_id) ?? []
 }
+
+export async function getTeamSalesManagers(teamId: string): Promise<string[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('team_members')
+    .select('user_id')
+    .eq('team_id', teamId)
+    .eq('role', 'sales_manager')
+    .eq('status', 'active')
+  return data?.map(m => m.user_id) ?? []
+}
