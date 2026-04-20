@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Bell, Clock, AlertCircle, ClipboardCheck, FolderKanban, ArrowRight } from 'lucide-react'
+import { Bell, CheckCircle, Clock, AlertCircle, ClipboardCheck, FolderKanban, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { InboxNotification } from '@/types'
 
