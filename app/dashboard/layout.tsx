@@ -20,16 +20,18 @@ export default async function DashboardLayout({
 
   const ctx = await getUserTeamContext()
 
+  if (!ctx) {
+    redirect('/disabled')
+  }
+
   const navigation = [
     { name: '仪表板', href: '/dashboard', iconName: 'LayoutDashboard' },
     { name: '客户', href: '/dashboard/customers', iconName: 'Users' },
     { name: '项目', href: '/dashboard/projects', iconName: 'FolderKanban' },
     { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
     { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
+    { name: '审批管理', href: '/dashboard/approvals', iconName: 'ClipboardCheck', showPendingBadge: true },
     { name: '设置', href: '/dashboard/settings', iconName: 'Settings' },
-    ...(ctx?.role === 'super_admin' || ctx?.role === 'sales_manager' ? [
-      { name: '待审批', href: '/dashboard/admin/approvals', iconName: 'ClipboardCheck', showPendingBadge: true },
-    ] : []),
     ...(ctx?.role === 'super_admin' ? [
       { name: '成员管理', href: '/dashboard/admin/users', iconName: 'UserCog' },
       { name: '数据字典', href: '/dashboard/admin/dictionary', iconName: 'BookOpen' },
