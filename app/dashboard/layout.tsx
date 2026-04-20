@@ -4,6 +4,7 @@ import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
 import { LogoutButton } from '@/components/auth/LogoutButton'
 import { MobileSidebar } from '@/components/layout/MobileSidebar'
 import { TasksProviderWrapper } from '@/components/layout/TasksProvider'
+import { BrowserNotificationProvider } from '@/components/layout/BrowserNotificationProvider'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 
 export default async function DashboardLayout({
@@ -24,13 +25,16 @@ export default async function DashboardLayout({
     redirect('/disabled')
   }
 
+  const isManager = ctx.role === 'super_admin' || ctx.role === 'sales_manager'
+
   const navigation = [
     { name: '仪表板', href: '/dashboard', iconName: 'LayoutDashboard' },
     { name: '客户', href: '/dashboard/customers', iconName: 'Users' },
     { name: '项目', href: '/dashboard/projects', iconName: 'FolderKanban' },
     { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
     { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
-    { name: '审批管理', href: '/dashboard/approvals', iconName: 'ClipboardCheck', showPendingBadge: true },
+    { name: '审批管理', href: '/dashboard/approvals', iconName: 'ClipboardCheck', showPendingBadge: isManager },
+    { name: '收件箱', href: '/dashboard/inbox', iconName: 'Inbox', showInboxBadge: true },
     { name: '设置', href: '/dashboard/settings', iconName: 'Settings' },
     ...(ctx?.role === 'super_admin' ? [
       { name: '成员管理', href: '/dashboard/admin/users', iconName: 'UserCog' },
@@ -62,14 +66,15 @@ export default async function DashboardLayout({
       {/* 移动端抽屉式侧边栏 */}
       <MobileSidebar navigation={navigation} />
 
-      {/* 任务数据 Provider 包裹主内容区域 */}
-      <TasksProviderWrapper>
-        <div className="md:pl-64">
-          <main className="min-h-screen">
-            {children}
-          </main>
-        </div>
-      </TasksProviderWrapper>
+      <BrowserNotificationProvider>
+        <TasksProviderWrapper>
+          <div className="md:pl-64">
+            <main className="min-h-screen">
+              {children}
+            </main>
+          </div>
+        </TasksProviderWrapper>
+      </BrowserNotificationProvider>
     </div>
   )
 }
