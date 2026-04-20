@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server'
 import { getUserTeamContext, isManager } from '@/lib/auth/get-user-role'
 import { approveRequest, rejectRequest } from '@/lib/supabase/approval-queries'
+import { writeNotification, writeNotifications, getTeamCcUsers } from '@/lib/supabase/inbox-queries'
+import { createClient } from '@supabase/supabase-js'
+
+function createAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  create_customer: '新建客户',
+  create_project: '新建项目',
+  update_project: '修改项目',
+}
 
 export async function PATCH(
   request: Request,
@@ -14,13 +29,57 @@ export async function PATCH(
   const { id } = await params
   const { action, rejectReason } = await request.json()
 
+  const supabase = createAdminClient()
+  const { data: req } = await supabase
+    .from('approval_requests')
+    .select('submitted_by, type, payload')
+    .eq('id', id)
+    .single()
+  if (!req) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const label = TYPE_LABELS[req.type] ?? req.type
+  const name = (req.payload as Record<string, unknown>)?.name as string ?? ''
+  const subject = name ? `${label}：${name}` : label
+
   if (action === 'approve') {
     await approveRequest(id, ctx.userId)
+
+    await writeNotification({
+      userId: req.submitted_by,
+      type: 'approval_approved',
+      title: '审批通过',
+      body: `你发起的「${subject}」已通过`,
+      linkType: 'approval',
+      linkId: id,
+    })
+
+    const ccUsers = await getTeamCcUsers(ctx.teamId)
+    if (ccUsers.length > 0) {
+      await writeNotifications(
+        ccUsers.map(uid => ({
+          userId: uid,
+          type: 'approval_cc' as const,
+          title: '审批抄送',
+          body: `「${subject}」已获批准`,
+          linkType: 'approval' as const,
+          linkId: id,
+        }))
+      )
+    }
   } else if (action === 'reject') {
     if (!rejectReason) {
       return NextResponse.json({ error: 'rejectReason is required' }, { status: 400 })
     }
     await rejectRequest(id, ctx.userId, rejectReason)
+
+    await writeNotification({
+      userId: req.submitted_by,
+      type: 'approval_rejected',
+      title: '审批驳回',
+      body: `你发起的「${subject}」已被驳回`,
+      linkType: 'approval',
+      linkId: id,
+    })
   } else {
     return NextResponse.json({ error: 'action must be approve or reject' }, { status: 400 })
   }
