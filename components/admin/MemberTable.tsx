@@ -46,15 +46,15 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
     <Card className="rounded-2xl shadow-sm border-0 bg-white">
       <CardContent className="p-0">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-50 border-b border-zinc-100">
+          <thead className="bg-white border-b border-zinc-200">
             <tr>
-              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide first:rounded-tl-2xl">邮箱</th>
-              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">角色</th>
-              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">数据范围</th>
-              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">审批抄送</th>
-              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">状态</th>
-              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">加入时间</th>
-              <th className="px-4 py-3.5 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide last:rounded-tr-2xl">操作</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase rounded-tl-2xl">邮箱</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-36">角色</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28">数据范围</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-24">审批抄送</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-24">状态</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28">加入时间</th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-20 rounded-tr-2xl">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
