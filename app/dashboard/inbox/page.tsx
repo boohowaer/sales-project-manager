@@ -123,7 +123,6 @@ export default function InboxPage() {
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length
-  const displayed = tab === 'unread' ? notifications.filter(n => !n.is_read) : notifications
 
   return (
     <div className="p-8">
@@ -153,19 +152,31 @@ export default function InboxPage() {
 
       {loading ? (
         <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
-      ) : displayed.length === 0 ? (
+      ) : notifications.length === 0 ? (
         <Card className="rounded-2xl shadow-sm border-0 bg-white">
           <CardContent className="text-center py-16">
             <CheckCircle className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
-            <p className="text-zinc-400 text-sm">{tab === 'unread' ? '暂无未读通知' : '暂无通知'}</p>
+            <p className="text-zinc-400 text-sm">暂无通知</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {displayed.map(n => (
-            <NotifItem key={n.id} notif={n} onMarkRead={markRead} onRemoveByLink={removeByLink} />
-          ))}
-        </div>
+        <>
+          {tab === 'unread' && unreadCount === 0 && (
+            <Card className="rounded-2xl shadow-sm border-0 bg-white">
+              <CardContent className="text-center py-16">
+                <CheckCircle className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
+                <p className="text-zinc-400 text-sm">暂无未读通知</p>
+              </CardContent>
+            </Card>
+          )}
+          <div className="space-y-2">
+            {notifications.map(n => (
+              <div key={n.id} className={tab === 'unread' && n.is_read ? 'hidden' : ''}>
+                <NotifItem notif={n} onMarkRead={markRead} onRemoveByLink={removeByLink} />
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
