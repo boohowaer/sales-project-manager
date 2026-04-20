@@ -13,6 +13,7 @@ import {
   UserCog,
   BookOpen,
   ClipboardCheck,
+  Inbox,
   LucideIcon
 } from 'lucide-react'
 
@@ -21,9 +22,9 @@ interface NavigationItem {
   href: string
   iconName: string
   showPendingBadge?: boolean
+  showInboxBadge?: boolean
 }
 
-// 图标映射表
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
   Users,
@@ -34,23 +35,40 @@ const iconMap: Record<string, LucideIcon> = {
   UserCog,
   BookOpen,
   ClipboardCheck,
+  Inbox,
 }
 
 export function SidebarNavigation({ navigation }: { navigation: NavigationItem[] }) {
   const pathname = usePathname()
   const [pendingCount, setPendingCount] = useState(0)
+  const [inboxCount, setInboxCount] = useState(0)
 
   const hasPendingBadge = navigation.some(n => n.showPendingBadge)
+  const hasInboxBadge = navigation.some(n => n.showInboxBadge)
 
   useEffect(() => {
     if (!hasPendingBadge) return
     fetch('/api/approvals')
       .then(r => r.json())
       .then((data: unknown) => {
-        if (Array.isArray(data)) setPendingCount(data.length)
+        if (Array.isArray(data)) {
+          setPendingCount(data.filter((r: any) => r.status === 'pending').length)
+        }
       })
       .catch(() => {})
   }, [hasPendingBadge])
+
+  useEffect(() => {
+    if (!hasInboxBadge) return
+    fetch('/api/inbox?count=true')
+      .then(r => r.json())
+      .then((data: unknown) => {
+        if (data && typeof data === 'object' && 'unread' in data) {
+          setInboxCount((data as { unread: number }).unread)
+        }
+      })
+      .catch(() => {})
+  }, [hasInboxBadge])
 
   return (
     <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -59,6 +77,8 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
         if (!Icon) return null
 
         const isActive = pathname === item.href
+        const badge = item.showPendingBadge ? pendingCount : item.showInboxBadge ? inboxCount : 0
+
         return (
           <Link
             key={item.name}
@@ -73,9 +93,9 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
               isActive ? 'text-white' : 'text-zinc-500'
             }`} />
             {item.name}
-            {item.showPendingBadge && pendingCount > 0 && (
+            {badge > 0 && (
               <span className="ml-auto text-xs bg-rose-500 text-white rounded-full px-1.5 py-0.5 leading-none">
-                {pendingCount}
+                {badge}
               </span>
             )}
           </Link>
