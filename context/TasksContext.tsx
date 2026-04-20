@@ -39,7 +39,8 @@ interface TasksProviderProps {
 }
 
 function getTodayKey() {
-  return `inbox_task_written_${new Date().toISOString().slice(0, 10)}`
+  const d = new Date()
+  return `inbox_task_written_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
 function getWrittenToday(): Set<string> {

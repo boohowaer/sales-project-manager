@@ -7,8 +7,11 @@ export function BrowserNotificationProvider({ children }: { children: React.Reac
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    if (Notification.permission === 'default') {
-      Notification.requestPermission()
+    async function init() {
+      if (Notification.permission === 'default') {
+        await Notification.requestPermission()
+      }
+      pushUnpushed()
     }
 
     async function pushUnpushed() {
@@ -38,7 +41,7 @@ export function BrowserNotificationProvider({ children }: { children: React.Reac
       }
     }
 
-    pushUnpushed()
+    init()
   }, [])
 
   return <>{children}</>

@@ -104,7 +104,8 @@ export default function DashboardPage() {
       setNotifProjects(notifResult)
 
       // 节点提醒写 inbox（每日去重）
-      const milestoneKey = `inbox_milestone_written_${new Date().toISOString().slice(0, 10)}`
+      const _d = new Date()
+      const milestoneKey = `inbox_milestone_written_${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`
       const writtenMilestones = new Set<string>(
         JSON.parse(localStorage.getItem(milestoneKey) ?? '[]')
       )
