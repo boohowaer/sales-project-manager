@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserTeamContext, isManager } from '@/lib/auth/get-user-role'
 import { submitApprovalRequest, getMyRequests, getAllRequests } from '@/lib/supabase/approval-queries'
-import { writeNotifications, getTeamManagers, getTeamSalesManagers } from '@/lib/supabase/inbox-queries'
+import { writeNotifications, getTeamSuperAdmins, getTeamSalesManagers } from '@/lib/supabase/inbox-queries'
 
 const TYPE_LABELS: Record<string, string> = {
   create_customer: '新建客户',
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   if (ctx.role === 'sales_rep') {
     step1Approvers = await getTeamSalesManagers(ctx.teamId)
   } else {
-    step1Approvers = await getTeamManagers(ctx.teamId)
+    step1Approvers = await getTeamSuperAdmins(ctx.teamId)
   }
 
   await writeNotifications(

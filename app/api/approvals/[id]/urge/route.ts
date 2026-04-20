@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 import { urgeRequest } from '@/lib/supabase/approval-queries'
-import { writeNotifications, getTeamManagers } from '@/lib/supabase/inbox-queries'
+import { writeNotifications, getTeamSalesManagers, getTeamSuperAdmins } from '@/lib/supabase/inbox-queries'
 import { createClient } from '@supabase/supabase-js'
 
 function createAdminClient() {
@@ -28,7 +28,7 @@ export async function POST(
   const supabase = createAdminClient()
   const { data: req } = await supabase
     .from('approval_requests')
-    .select('submitted_by, status, type, payload')
+    .select('submitted_by, status, type, payload, current_step, total_steps')
     .eq('id', id)
     .single()
 
@@ -49,12 +49,16 @@ export async function POST(
     )
   }
 
-  const managers = await getTeamManagers(ctx.teamId)
+  // 催办当前步骤的审批人：第1步 → sales_manager，最后一步 → super_admin
+  const currentApprovers = req.current_step < req.total_steps
+    ? await getTeamSalesManagers(ctx.teamId)
+    : await getTeamSuperAdmins(ctx.teamId)
+
   const label = TYPE_LABELS[req.type] ?? req.type
   const name = (req.payload as Record<string, unknown>)?.name as string ?? ''
   const subject = name ? `${label}：${name}` : label
   await writeNotifications(
-    managers.map(uid => ({
+    currentApprovers.map(uid => ({
       userId: uid,
       type: 'approval_urge_received' as const,
       title: '催办提醒',

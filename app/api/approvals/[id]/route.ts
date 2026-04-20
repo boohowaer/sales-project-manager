@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserTeamContext, isManager } from '@/lib/auth/get-user-role'
 import { approveRequest, rejectRequest } from '@/lib/supabase/approval-queries'
-import { writeNotification, writeNotifications, getTeamCcUsers, getTeamManagers } from '@/lib/supabase/inbox-queries'
+import { writeNotification, writeNotifications, getTeamCcUsers, getTeamSuperAdmins } from '@/lib/supabase/inbox-queries'
 import { createClient } from '@supabase/supabase-js'
 
 function createAdminClient() {
@@ -45,8 +45,8 @@ export async function PATCH(
     const { advanced } = await approveRequest(id, ctx.userId)
 
     if (advanced) {
-      // 步骤推进：通知下一步审批人（super_admin）
-      const nextApprovers = await getTeamManagers(ctx.teamId)
+      // 步骤推进：只通知 super_admin（第2步审批人）
+      const nextApprovers = await getTeamSuperAdmins(ctx.teamId)
       await writeNotifications(
         nextApprovers.map(uid => ({
           userId: uid,
