@@ -25,11 +25,15 @@ export function BrowserNotificationProvider({ children }: { children: React.Reac
         if (unpushed.length === 0) return
 
         unpushed.forEach(n => {
-          new Notification(n.title, {
+          const notif = new Notification(n.title, {
             body: n.body ?? undefined,
             icon: '/favicon.ico',
             tag: n.id,
           })
+          notif.onclick = () => {
+            window.focus()
+            window.location.href = '/dashboard/inbox'
+          }
         })
 
         await fetch('/api/inbox/mark-pushed', {
