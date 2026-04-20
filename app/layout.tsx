@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { FontProvider } from "@/components/providers/FontProvider";
 import { Poppins } from "next/font/google";
+import Script from "next/script";
 
 const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],
@@ -24,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className="h-full antialiased" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `
+        <Script id="font-init" strategy="beforeInteractive">{`
           try {
             var s = localStorage.getItem('fontSettings');
             if (s) {
@@ -37,7 +38,7 @@ export default function RootLayout({
           } catch(e) {
             document.documentElement.style.fontSize = '15px';
           }
-        `}} />
+        `}</Script>
       </head>
       <body className={`${poppins.variable} min-h-full flex flex-col`}>
         <FontProvider>
