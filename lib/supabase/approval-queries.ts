@@ -14,8 +14,10 @@ export async function submitApprovalRequest(params: {
   targetId?: string
   payload: Record<string, unknown>
   submittedBy: string
+  submitterRole: 'super_admin' | 'sales_manager' | 'sales_rep'
 }): Promise<ApprovalRequest> {
   const supabase = createAdminClient()
+  const total_steps = params.submitterRole === 'sales_rep' ? 2 : 1
   const { data, error } = await supabase
     .from('approval_requests')
     .insert({
@@ -25,6 +27,8 @@ export async function submitApprovalRequest(params: {
       payload: params.payload,
       submitted_by: params.submittedBy,
       status: 'pending',
+      current_step: 1,
+      total_steps,
     })
     .select()
     .single()
@@ -55,7 +59,10 @@ export async function getMyRequests(submittedBy: string): Promise<ApprovalReques
   return data || []
 }
 
-export async function approveRequest(id: string, reviewedBy: string): Promise<void> {
+export async function approveRequest(
+  id: string,
+  reviewedBy: string
+): Promise<{ advanced: boolean }> {
   const supabase = createAdminClient()
 
   const { data: req, error: fetchError } = await supabase
@@ -65,6 +72,21 @@ export async function approveRequest(id: string, reviewedBy: string): Promise<vo
     .single()
   if (fetchError || !req) throw fetchError ?? new Error('Request not found')
 
+  // 还有下一步：只推进步骤，不执行业务操作
+  if (req.current_step < req.total_steps) {
+    const { error } = await supabase
+      .from('approval_requests')
+      .update({
+        current_step: req.current_step + 1,
+        reviewed_by: reviewedBy,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+    if (error) throw error
+    return { advanced: true }
+  }
+
+  // 最终步骤：执行业务操作并标记 approved
   if (req.type === 'create_customer') {
     const { data: customer, error } = await supabase
       .from('customers')
@@ -103,6 +125,8 @@ export async function approveRequest(id: string, reviewedBy: string): Promise<vo
       reviewed_at: new Date().toISOString(),
     }).eq('id', id)
   }
+
+  return { advanced: false }
 }
 
 export async function rejectRequest(id: string, reviewedBy: string, rejectReason: string): Promise<void> {
