@@ -23,9 +23,8 @@ const ROLE_LABELS: Record<TeamRole, string> = {
   sales_rep: '普通销售',
 }
 
-export function MemberTable({ members, loading: tableLoading, onUpdate, currentUserId }: {
+export function MemberTable({ members, onUpdate, currentUserId }: {
   members: Member[]
-  loading?: boolean
   onUpdate: () => void
   currentUserId: string | null
 }) {
@@ -67,11 +66,7 @@ export function MemberTable({ members, loading: tableLoading, onUpdate, currentU
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {tableLoading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-16 text-center text-zinc-400 text-sm">加载中...</td>
-              </tr>
-            ) : members.length === 0 ? (
+            {members.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-16 text-center text-zinc-400 text-sm">暂无成员</td>
               </tr>

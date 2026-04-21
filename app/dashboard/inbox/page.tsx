@@ -126,7 +126,7 @@ export default function InboxPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="text-center py-12">
+        <div className="text-center py-20">
           <div className="text-zinc-400 text-sm">加载中...</div>
         </div>
       </div>

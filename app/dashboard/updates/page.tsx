@@ -515,8 +515,8 @@ export default function UpdatesPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="text-center py-12">
-          <div className="text-zinc-400">加载中...</div>
+        <div className="text-center py-20">
+          <div className="text-zinc-400 text-sm">加载中...</div>
         </div>
       </div>
     )
@@ -562,7 +562,7 @@ export default function UpdatesPage() {
       {/* 项目列表 - 表格形式 */}
       {filteredProjects.length === 0 ? (
         <Card className="rounded-2xl shadow-sm border-0 bg-white">
-          <CardContent className="text-center py-12">
+          <CardContent className="text-center py-20">
             <p className="text-zinc-400">{searchKeyword ? '未找到匹配的项目' : '还没有项目'}</p>
           </CardContent>
         </Card>

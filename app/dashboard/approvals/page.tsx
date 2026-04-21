@@ -220,7 +220,7 @@ export default function ApprovalsPage() {
       </div>
 
       {pageLoading ? (
-        <div className="text-center py-12">
+        <div className="text-center py-20">
           <div className="text-zinc-400 text-sm">加载中...</div>
         </div>
       ) : (

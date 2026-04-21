@@ -21,6 +21,14 @@ export default function UsersPage() {
     fetch('/api/me').then(r => r.json()).then(d => setCurrentUserId(d.userId ?? null))
   }, [loadMembers])
 
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -30,7 +38,7 @@ export default function UsersPage() {
         </div>
         <Button onClick={() => setInviteOpen(true)} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">邀请成员</Button>
       </div>
-      <MemberTable members={members} loading={loading} onUpdate={loadMembers} currentUserId={currentUserId} />
+      <MemberTable members={members} onUpdate={loadMembers} currentUserId={currentUserId} />
       <InviteUserDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}

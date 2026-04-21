@@ -275,8 +275,7 @@ export default function TasksPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="text-center py-12">
-          <div className="text-gray-500">加载中...</div>
+        <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
         </div>
       </div>
     )
