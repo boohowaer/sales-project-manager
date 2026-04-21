@@ -212,6 +212,14 @@ export default function ApprovalsPage() {
     activeTab === 'mine' ? myRequests :
     requests
 
+  if (pageLoading) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -219,13 +227,7 @@ export default function ApprovalsPage() {
         <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
       </div>
 
-      {pageLoading ? (
-        <div className="text-center py-20">
-          <div className="text-zinc-400 text-sm">加载中...</div>
-        </div>
-      ) : (
-        <>
-          <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6">
             {tabs.map(t => (
               <button
                 key={t.key}
@@ -263,8 +265,6 @@ export default function ApprovalsPage() {
               ))}
             </div>
           )}
-        </>
-      )}
 
       <RejectDialog
         open={rejectTarget !== null}
