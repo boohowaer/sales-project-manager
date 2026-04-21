@@ -81,51 +81,13 @@ export default function SettingsPage() {
     { value: 'monospace', label: '等宽字体' }
   ]
 
-  // 加载时显示骨架屏
+  // 加载时显示加载中
   if (loading) {
     return (
-      <div className="p-8 max-w-4xl">
-        {/* 页面标题骨架屏 */}
-        <div className="mb-8">
-          <div className="h-9 w-20 bg-zinc-200 rounded animate-pulse" />
-          <div className="h-4 w-48 bg-zinc-100 rounded animate-pulse mt-3" />
+      <div className="p-8">
+        <div className="text-center py-12">
+          <div className="text-zinc-400 text-sm">加载中...</div>
         </div>
-        {/* 销售目标设定骨架屏 */}
-        <div className="mb-6">
-          <Card className="rounded-2xl shadow-sm border-0 bg-white">
-            <CardHeader>
-              <div className="h-6 w-32 bg-zinc-200 rounded animate-pulse" />
-              <div className="h-4 w-64 bg-zinc-100 rounded animate-pulse mt-2" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-10 w-full bg-zinc-100 rounded-lg animate-pulse" />
-            </CardContent>
-          </Card>
-        </div>
-        {/* 外观设置骨架屏 */}
-        <div className="mb-6">
-          <Card className="rounded-2xl shadow-sm border-0 bg-white">
-            <CardHeader>
-              <div className="h-6 w-32 bg-zinc-200 rounded animate-pulse" />
-              <div className="h-4 w-48 bg-zinc-100 rounded animate-pulse mt-2" />
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="h-10 w-full bg-zinc-100 rounded animate-pulse" />
-              <div className="h-10 w-full bg-zinc-100 rounded animate-pulse" />
-              <div className="h-10 w-full bg-zinc-100 rounded animate-pulse" />
-            </CardContent>
-          </Card>
-        </div>
-        {/* 提醒设置骨架屏 */}
-        <Card className="rounded-2xl shadow-sm border-0 bg-white">
-          <CardHeader>
-            <div className="h-6 w-32 bg-zinc-200 rounded animate-pulse" />
-            <div className="h-4 w-48 bg-zinc-100 rounded animate-pulse mt-2" />
-          </CardHeader>
-          <CardContent>
-            <div className="h-6 w-32 bg-zinc-100 rounded animate-pulse" />
-          </CardContent>
-        </Card>
       </div>
     )
   }
@@ -217,7 +179,7 @@ export default function SettingsPage() {
                 <div>
                   <Label htmlFor="reminder-enabled" className="text-sm font-medium text-zinc-700">启用提醒</Label>
                   <p className="text-sm text-zinc-500 mt-1">
-                    在首页信息提醒中显示即将到期的关注节点和任务
+                    在首页信息提醒中显示即将到期的关注节点和任务，并推送浏览器通知
                   </p>
                 </div>
                 <input
@@ -232,7 +194,7 @@ export default function SettingsPage() {
               {reminderEnabled && (
                 <>
                   <div>
-                    <Label htmlFor="reminder-advance" className="text-sm font-medium text-zinc-700">任务提醒时间范围</Label>
+                    <Label htmlFor="reminder-advance" className="text-sm font-medium text-zinc-700">即将到期任务提醒时间</Label>
                     <Select value={reminderAdvanceHours.toString()} onValueChange={(v) => setReminderAdvanceHours(parseInt(v))}>
                       <SelectTrigger id="reminder-advance" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                         <SelectValue />
@@ -247,12 +209,12 @@ export default function SettingsPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-zinc-500 mt-2">
-                      在任务到期前多久显示提醒
+                      任务到期前多久在提醒面板显示，并推送浏览器通知
                     </p>
                   </div>
 
                   <div>
-                    <Label htmlFor="milestone-reminder" className="text-sm font-medium text-zinc-700">关注节点提醒范围</Label>
+                    <Label htmlFor="milestone-reminder" className="text-sm font-medium text-zinc-700">关注节点提醒</Label>
                     <Select value={milestoneReminderDays.toString()} onValueChange={(v) => setMilestoneReminderDays(parseInt(v))}>
                       <SelectTrigger id="milestone-reminder" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                         <SelectValue />
@@ -266,7 +228,7 @@ export default function SettingsPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-zinc-500 mt-2">
-                      信息提醒面板中显示多少天内的项目关注节点
+                      节点到期前多少天在提醒面板显示，并推送浏览器通知
                     </p>
                   </div>
                 </>

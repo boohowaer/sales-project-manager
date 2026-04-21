@@ -122,7 +122,7 @@ export default function ApprovalsPage() {
   const [role, setRole] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [approvalCc, setApprovalCc] = useState(false)
-  const [meLoaded, setMeLoaded] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
   const [loading, setLoading] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<string | null>(null)
   const [tab, setTab] = useState<'pending' | 'mine' | 'all'>('pending')
@@ -135,7 +135,6 @@ export default function ApprovalsPage() {
     setRole(me.role)
     setUserId(me.userId)
     setApprovalCc(me.approvalCc ?? false)
-    setMeLoaded(true)
 
     const [allRes, mineRes] = await Promise.all([
       fetch('/api/approvals'),
@@ -143,6 +142,7 @@ export default function ApprovalsPage() {
     ])
     if (allRes.ok) setRequests(await allRes.json())
     if (mineRes.ok) setMyRequests(await mineRes.json())
+    setPageLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
@@ -219,43 +219,51 @@ export default function ApprovalsPage() {
         <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
       </div>
 
-      <div className="flex gap-2 mb-6 min-h-[34px]">
-        {meLoaded ? tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              activeTab === t.key
-                ? 'bg-zinc-900 text-white'
-                : 'bg-white text-zinc-600 hover:bg-zinc-100 border border-zinc-200'
-            }`}
-          >
-            {t.label}
-          </button>
-        )) : null}
-      </div>
-
-      {displayRequests.length === 0 ? (
-        <Card className="rounded-2xl shadow-sm border-0 bg-white">
-          <CardContent className="text-center py-16">
-            <p className="text-zinc-400 text-sm">暂无审批记录</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {displayRequests.map(req => (
-            <ApprovalCard
-              key={req.id}
-              req={req}
-              canApprove={isMyTurn(req)}
-              canUrge={activeTab === 'mine' && req.status === 'pending' && req.submitted_by === userId}
-              onApprove={handleApprove}
-              onReject={id => setRejectTarget(id)}
-              onUrge={handleUrge}
-              loading={loading}
-            />
-          ))}
+      {pageLoading ? (
+        <div className="text-center py-12">
+          <div className="text-zinc-400 text-sm">加载中...</div>
         </div>
+      ) : (
+        <>
+          <div className="flex gap-2 mb-6">
+            {tabs.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  activeTab === t.key
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-zinc-600 hover:bg-zinc-100 border border-zinc-200'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {displayRequests.length === 0 ? (
+            <Card className="rounded-2xl shadow-sm border-0 bg-white">
+              <CardContent className="text-center py-16">
+                <p className="text-zinc-400 text-sm">暂无审批记录</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {displayRequests.map(req => (
+                <ApprovalCard
+                  key={req.id}
+                  req={req}
+                  canApprove={isMyTurn(req)}
+                  canUrge={activeTab === 'mine' && req.status === 'pending' && req.submitted_by === userId}
+                  onApprove={handleApprove}
+                  onReject={id => setRejectTarget(id)}
+                  onUrge={handleUrge}
+                  loading={loading}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <RejectDialog

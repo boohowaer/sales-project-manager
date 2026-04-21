@@ -123,6 +123,16 @@ export default function InboxPage() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12">
+          <div className="text-zinc-400 text-sm">加载中...</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -149,9 +159,7 @@ export default function InboxPage() {
         ))}
       </div>
 
-      {loading ? (
-        <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
-      ) : notifications.length === 0 ? (
+      {notifications.length === 0 ? (
         <p className="text-center py-16 text-zinc-400 text-sm">暂无通知</p>
       ) : (
         <div className="space-y-2">
