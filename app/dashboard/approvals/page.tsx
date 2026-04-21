@@ -122,6 +122,7 @@ export default function ApprovalsPage() {
   const [role, setRole] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [approvalCc, setApprovalCc] = useState(false)
+  const [meLoaded, setMeLoaded] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<string | null>(null)
   const [tab, setTab] = useState<'pending' | 'mine' | 'all'>('pending')
@@ -134,6 +135,7 @@ export default function ApprovalsPage() {
     setRole(me.role)
     setUserId(me.userId)
     setApprovalCc(me.approvalCc ?? false)
+    setMeLoaded(true)
 
     const [allRes, mineRes] = await Promise.all([
       fetch('/api/approvals'),
@@ -217,8 +219,8 @@ export default function ApprovalsPage() {
         <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {tabs.map(t => (
+      <div className="flex gap-2 mb-6 min-h-[34px]">
+        {meLoaded ? tabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
@@ -230,7 +232,7 @@ export default function ApprovalsPage() {
           >
             {t.label}
           </button>
-        ))}
+        )) : null}
       </div>
 
       {displayRequests.length === 0 ? (
