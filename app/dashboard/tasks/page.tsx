@@ -276,7 +276,6 @@ export default function TasksPage() {
     return (
       <div className="p-8">
         <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
-        </div>
       </div>
     )
   }
