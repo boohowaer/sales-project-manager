@@ -1,0 +1,5 @@
+{"type":"server-started","port":53996,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:53996","screen_dir":"/Users/guanjianfei/sales-project-manager/.superpowers/brainstorm/7217-1776616448/content","state_dir":"/Users/guanjianfei/sales-project-manager/.superpowers/brainstorm/7217-1776616448/state"}
+{"type":"screen-added","file":"/Users/guanjianfei/sales-project-manager/.superpowers/brainstorm/7217-1776616448/content/style-comparison.html"}
+{"type":"screen-added","file":"/Users/guanjianfei/sales-project-manager/.superpowers/brainstorm/7217-1776616448/content/capsule-style.html"}
+{"type":"screen-added","file":"/Users/guanjianfei/sales-project-manager/.superpowers/brainstorm/7217-1776616448/content/capsule-style-v2.html"}
+{"type":"server-stopped","reason":"idle timeout"}

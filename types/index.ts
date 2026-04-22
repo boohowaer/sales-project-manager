@@ -282,7 +282,7 @@ export type TeamMember = {
   team_id: string
   user_id: string
   role: TeamRole
-  status: 'active' | 'disabled'
+  status: 'active' | 'disabled' | 'pending'
   invited_by: string | null
   joined_at: string
   data_scope: 'own' | 'team'
@@ -350,6 +350,8 @@ export type InboxNotificationType =
   | 'approval_cc'
   | 'approval_urge'
   | 'approval_urge_received'
+  | 'member_request'
+  | 'member_approved'
 
 export type InboxLinkType = 'task' | 'approval' | 'project'
 

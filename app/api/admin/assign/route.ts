@@ -28,5 +28,25 @@ export async function POST(request: Request) {
     operatedBy: ctx.userId,
   })
 
+  // 客户分派时，级联分派所有关联项目
+  if (resourceType === 'customer') {
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id, user_id')
+      .eq('customer_id', resourceId)
+    if (projects && projects.length > 0) {
+      await Promise.all(projects.map(p =>
+        assignResource({
+          teamId: ctx.teamId,
+          resourceType: 'project',
+          resourceId: p.id,
+          assignedFrom: p.user_id ?? null,
+          assignedTo,
+          operatedBy: ctx.userId,
+        })
+      ))
+    }
+  }
+
   return NextResponse.json({ ok: true })
 }

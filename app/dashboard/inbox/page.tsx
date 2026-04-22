@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Bell, CheckCircle, Clock, AlertCircle, ClipboardCheck, FolderKanban, ArrowRight } from 'lucide-react'
+import { Bell, CheckCircle, Clock, AlertCircle, ClipboardCheck, FolderKanban, UserCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { InboxNotification } from '@/types'
 
@@ -15,6 +15,7 @@ const LINK_TARGETS: Record<string, string> = {
   approval_cc: '/dashboard/approvals',
   approval_urge: '/dashboard/approvals',
   approval_urge_received: '/dashboard/approvals',
+  member_request: '/dashboard/admin/users',
 }
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -27,6 +28,8 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
   approval_cc: <Bell className="w-4 h-4 text-zinc-500" />,
   approval_urge: <Bell className="w-4 h-4 text-amber-500" />,
   approval_urge_received: <Bell className="w-4 h-4 text-amber-500" />,
+  member_request: <UserCheck className="w-4 h-4 text-blue-500" />,
+  member_approved: <CheckCircle className="w-4 h-4 text-emerald-500" />,
 }
 
 function timeAgo(dateStr: string): string {

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { getUserTeamContext, isSuperAdmin } from '@/lib/auth/get-user-role'
+import { getUserTeamContext, isSuperAdmin, isManager } from '@/lib/auth/get-user-role'
 import { getTeamMembers, createInvitation } from '@/lib/supabase/admin-queries'
 
 export async function GET() {
   const ctx = await getUserTeamContext()
-  if (!ctx || !isSuperAdmin(ctx.role)) {
+  if (!ctx || !isManager(ctx.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const members = await getTeamMembers(ctx.teamId)

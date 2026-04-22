@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { signUp } from '@/lib/supabase/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,9 +38,17 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      await signUp(email, password, name)
-      toast.success('注册成功！请登录')
-      router.push('/login')
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || '注册失败，请稍后重试')
+        return
+      }
+      router.push('/pending')
     } catch (error: any) {
       toast.error(error.message || '注册失败，请稍后重试')
     } finally {

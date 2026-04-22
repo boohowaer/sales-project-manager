@@ -17,9 +17,22 @@ export function AssignDialog({ open, onClose, resourceType, resourceId, onSucces
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!open) return
-    fetch('/api/admin/users').then(r => r.json()).then(setMembers)
-  }, [open])
+    if (!open || !resourceId) return
+    fetch('/api/admin/users')
+      .then(r => {
+        if (!r.ok) {
+          console.error('fetch /api/admin/users failed:', r.status, r.statusText)
+          return []
+        }
+        return r.json()
+      })
+      .then(data => {
+        setMembers(Array.isArray(data) ? data : [])
+      })
+      .catch(err => {
+        console.error('AssignDialog fetch error:', err)
+      })
+  }, [open, resourceId])
 
   async function handleAssign() {
     if (!selected) return

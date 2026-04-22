@@ -20,24 +20,27 @@ export function RejectDialog({ open, onClose, onConfirm }: {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="rounded-2xl shadow-xl border-0">
         <DialogHeader>
-          <DialogTitle>驳回原因</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">驳回原因</DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
-          <Label>请填写驳回原因（将通知提交人）</Label>
+          <Label className="text-sm font-medium text-zinc-700">请填写驳回原因（将通知提交人）</Label>
           <Textarea
             value={reason}
             onChange={e => setReason(e.target.value)}
             placeholder="请说明驳回原因..."
             rows={3}
+            className="border-zinc-200 focus:border-zinc-400 rounded-xl"
           />
         </div>
-        <DialogFooter>
-          <Button onClick={handleConfirm} disabled={!reason.trim()} variant="destructive">
+        <DialogFooter className="gap-2.5 pt-2">
+          <Button onClick={handleConfirm} disabled={!reason.trim()}
+            className="rounded-full bg-rose-600 text-white hover:bg-rose-700">
             确认驳回
           </Button>
-          <Button variant="outline" onClick={onClose}>取消</Button>
+          <Button variant="outline" onClick={onClose}
+            className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">取消</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { TeamRole } from '@/types'
 
 const ROLE_LABELS: Record<TeamRole, string> = {
@@ -46,43 +47,44 @@ export function InviteUserDialog({ open, onClose, onSuccess }: {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="rounded-2xl shadow-xl border-0">
         <DialogHeader>
-          <DialogTitle>邀请成员</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">邀请成员</DialogTitle>
         </DialogHeader>
         {inviteLink ? (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">邀请链接已生成（24小时有效）：</p>
-            <Input value={inviteLink} readOnly onClick={e => (e.target as HTMLInputElement).select()} />
-            <p className="text-xs text-muted-foreground">复制链接发送给对方，对方点击后注册/登录即可加入团队。</p>
+            <p className="text-sm text-zinc-500">邀请链接已生成（24小时有效）：</p>
+            <Input value={inviteLink} readOnly onClick={e => (e.target as HTMLInputElement).select()} className="rounded-full border-zinc-200 text-xs" />
+            <p className="text-xs text-zinc-400">复制链接发送给对方，对方点击后注册/登录即可加入团队。</p>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="space-y-1">
-              <Label>邮箱</Label>
-              <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com" />
+            <div>
+              <Label className="text-sm font-medium text-zinc-700">邮箱</Label>
+              <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400" />
             </div>
-            <div className="space-y-1">
-              <Label>角色</Label>
-              <select
-                value={role}
-                onChange={e => setRole(e.target.value as TeamRole)}
-                className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-              >
-                {(Object.keys(ROLE_LABELS) as TeamRole[]).map(r => (
-                  <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                ))}
-              </select>
+            <div>
+              <Label className="text-sm font-medium text-zinc-700">角色</Label>
+              <Select value={role} onValueChange={val => setRole(val as TeamRole)}>
+                <SelectTrigger className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(ROLE_LABELS) as TeamRole[]).map(r => (
+                    <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         )}
-        <DialogFooter>
+        <DialogFooter className="gap-2.5 pt-2">
           {!inviteLink && (
-            <Button onClick={handleSubmit} disabled={loading || !email}>
+            <Button onClick={handleSubmit} disabled={loading || !email} className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800">
               {loading ? '生成中...' : '生成邀请链接'}
             </Button>
           )}
-          <Button variant="outline" onClick={handleClose}>关闭</Button>
+          <Button variant="outline" onClick={handleClose} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">关闭</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -36,6 +36,7 @@ export async function proxy(request: NextRequest) {
     const pathname = request.nextUrl.pathname
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register')
     const isDashboard = pathname.startsWith('/dashboard')
+    const isPending = pathname.startsWith('/pending')
 
     if (!user && isDashboard) {
       const url = request.nextUrl.clone()
@@ -43,10 +44,49 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    // 已登录用户访问 dashboard：检查 pending/disabled 状态
+    if (user && isDashboard) {
+      const { data: member } = await supabase
+        .from('team_members')
+        .select('status')
+        .eq('user_id', user.id)
+        .single()
+      if (member?.status === 'pending') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/pending'
+        return NextResponse.redirect(url)
+      }
+      if (member?.status === 'disabled') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/disabled'
+        return NextResponse.redirect(url)
+      }
+    }
+
     if (user && isAuthPage) {
+      // 检查用户状态再决定跳转目标
+      const { data: member } = await supabase
+        .from('team_members')
+        .select('status')
+        .eq('user_id', user.id)
+        .single()
       const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
+      url.pathname = member?.status === 'pending' ? '/pending' : '/dashboard'
       return NextResponse.redirect(url)
+    }
+
+    // 已登录用户访问 /pending：若已 active 则跳 dashboard
+    if (user && isPending) {
+      const { data: member } = await supabase
+        .from('team_members')
+        .select('status')
+        .eq('user_id', user.id)
+        .single()
+      if (member?.status === 'active') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
     }
 
     // 超管专属路由保护（成员管理、数据字典）
@@ -76,5 +116,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/login', '/register', '/pending'],
 }

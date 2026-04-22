@@ -11,7 +11,7 @@ type Member = {
   user_id: string
   email: string
   role: TeamRole
-  status: 'active' | 'disabled'
+  status: 'active' | 'disabled' | 'pending'
   joined_at: string
   data_scope: 'own' | 'team'
   approval_cc: boolean
@@ -72,13 +72,14 @@ export function MemberTable({ members, onUpdate, currentUserId }: {
               </tr>
             ) : members.map(m => {
               const isManager = m.role === 'super_admin' || m.role === 'sales_manager'
+              const isPending = m.status === 'pending'
               return (
                 <tr key={m.id} className="hover:bg-zinc-50 transition-colors">
                   <td className="px-4 py-3 text-zinc-900 truncate">{m.email}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <Select
                       value={m.role}
-                      disabled={loading === m.id || m.user_id === currentUserId}
+                      disabled={loading === m.id || m.user_id === currentUserId || isPending}
                       onValueChange={val => patchMember(m.id, { role: val })}
                     >
                       <SelectTrigger className="w-32 rounded-full border-zinc-200 h-8 text-xs">
@@ -128,8 +129,12 @@ export function MemberTable({ members, onUpdate, currentUserId }: {
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <Badge className={`rounded-full text-xs border ${m.status === 'active' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
-                      {m.status === 'active' ? '正常' : '已禁用'}
+                    <Badge className={`rounded-full text-xs border ${
+                      m.status === 'active' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                      m.status === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                      'bg-zinc-100 text-zinc-500 border-zinc-200'
+                    }`}>
+                      {m.status === 'active' ? '正常' : m.status === 'pending' ? '待审核' : '已禁用'}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">
@@ -138,6 +143,16 @@ export function MemberTable({ members, onUpdate, currentUserId }: {
                   <td className="px-4 py-3 whitespace-nowrap">
                     {m.user_id === currentUserId ? (
                       <span className="text-xs text-zinc-400">（自己）</span>
+                    ) : m.status === 'pending' ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={loading === m.id}
+                        onClick={() => patchMember(m.id, { status: 'active' })}
+                        className="h-8 text-xs rounded-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                      >
+                        通过
+                      </Button>
                     ) : (
                       <Button
                         variant="ghost"

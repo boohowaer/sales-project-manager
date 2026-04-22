@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git rm *)",
+      "Bash(git commit -m ' *)",
+      "Bash(kill 27413)",
+      "Bash(npm run *)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs kill *)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(vercel --prod)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s http://localhost:3000/dashboard)",
+      "Bash(kill %1)",
+      "Bash(time curl *)",
+      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncc.com)",
+      "Bash(node -e ' *)",
+      "Bash(sed -i '' 's/w-\\\\[100px\\\\] rounded-tr-2xl/w-[120px] rounded-tr-2xl/g' /Users/guanjianfei/sales-project-manager/app/dashboard/updates/page.tsx)",
+      "Bash(sed -n '573,581p' /Users/guanjianfei/sales-project-manager/app/dashboard/updates/page.tsx)",
+      "Bash(sed -i '' 's/w-\\\\[200px\\\\]\">结算状态/w-[210px]\">结算状态/g; s/w-\\\\[360px\\\\]\">最新进展/w-[350px]\">最新进展/g' /Users/guanjianfei/sales-project-manager/app/dashboard/updates/page.tsx)",
+      "Bash(sed -n '574,580p' /Users/guanjianfei/sales-project-manager/app/dashboard/updates/page.tsx)"
+    ]
+  }
+}
