@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'react-hot-toast'
+import { createClient } from '@/lib/supabase/client'
 
 export default function SettingsPage() {
   const [fontFamily, setFontFamily] = useState('Poppins, Inter')
@@ -18,6 +19,8 @@ export default function SettingsPage() {
   const [salesGoal, setSalesGoal] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' })
+  const [pwdSaving, setPwdSaving] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -46,6 +49,33 @@ export default function SettingsPage() {
       toast.error('加载设置失败')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!pwdForm.next || !pwdForm.confirm) {
+      toast.error('请填写新密码')
+      return
+    }
+    if (pwdForm.next !== pwdForm.confirm) {
+      toast.error('两次输入的新密码不一致')
+      return
+    }
+    if (pwdForm.next.length < 6) {
+      toast.error('密码至少6位')
+      return
+    }
+    setPwdSaving(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: pwdForm.next })
+      if (error) throw error
+      toast.success('密码修改成功')
+      setPwdForm({ current: '', next: '', confirm: '' })
+    } catch (error: any) {
+      toast.error(error.message || '密码修改失败')
+    } finally {
+      setPwdSaving(false)
     }
   }
 
@@ -233,6 +263,41 @@ export default function SettingsPage() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          {/* 修改密码 */}
+          <Card className="rounded-2xl shadow-sm border-0 bg-white">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">修改密码</CardTitle>
+              <CardDescription className="text-sm text-zinc-500">更新您的登录密码</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-zinc-700">新密码</Label>
+                <Input
+                  type="password"
+                  value={pwdForm.next}
+                  onChange={(e) => setPwdForm({ ...pwdForm, next: e.target.value })}
+                  placeholder="至少6位"
+                  className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-zinc-700">确认新密码</Label>
+                <Input
+                  type="password"
+                  value={pwdForm.confirm}
+                  onChange={(e) => setPwdForm({ ...pwdForm, confirm: e.target.value })}
+                  placeholder="再次输入新密码"
+                  className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                />
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button onClick={handleChangePassword} disabled={pwdSaving} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
+                  {pwdSaving ? '修改中...' : '修改密码'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

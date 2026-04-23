@@ -13,13 +13,14 @@ export default function UsersPage() {
   const loadMembers = useCallback(async () => {
     const res = await fetch('/api/admin/users')
     if (res.ok) setMembers(await res.json())
-    setLoading(false)
   }, [])
 
   useEffect(() => {
-    loadMembers()
-    fetch('/api/me').then(r => r.json()).then(d => setCurrentUserId(d.userId ?? null))
-  }, [loadMembers])
+    Promise.all([
+      fetch('/api/admin/users').then(r => r.json()).then(d => setMembers(d)),
+      fetch('/api/me').then(r => r.json()).then(d => setCurrentUserId(d.userId ?? null)),
+    ]).finally(() => setLoading(false))
+  }, [])
 
   if (loading) {
     return (

@@ -8,6 +8,12 @@ function createAdminClient() {
   )
 }
 
+// 数值越高优先级越高，未列出的为 0
+const TYPE_PRIORITY: Partial<Record<InboxNotificationType, number>> = {
+  task_overdue: 2,
+  task_upcoming: 1,
+}
+
 export async function writeNotification(params: {
   userId: string
   type: InboxNotificationType
@@ -17,6 +23,34 @@ export async function writeNotification(params: {
   linkId?: string
 }): Promise<void> {
   const supabase = createAdminClient()
+
+  if (params.linkType && params.linkId) {
+    // 查询同一 link 是否已有更高优先级的记录
+    const { data: existing } = await supabase
+      .from('inbox_notifications')
+      .select('id, type')
+      .eq('user_id', params.userId)
+      .eq('link_type', params.linkType)
+      .eq('link_id', params.linkId)
+
+    if (existing && existing.length > 0) {
+      const incomingPriority = TYPE_PRIORITY[params.type] ?? 0
+      const maxExistingPriority = Math.max(
+        ...existing.map((r: { type: InboxNotificationType }) => TYPE_PRIORITY[r.type] ?? 0)
+      )
+      // 已有更高优先级的记录，跳过写入
+      if (incomingPriority < maxExistingPriority) return
+
+      // 删除旧记录，写入新的
+      await supabase
+        .from('inbox_notifications')
+        .delete()
+        .eq('user_id', params.userId)
+        .eq('link_type', params.linkType)
+        .eq('link_id', params.linkId)
+    }
+  }
+
   const { error } = await supabase.from('inbox_notifications').insert({
     user_id: params.userId,
     type: params.type,
@@ -39,18 +73,8 @@ export async function writeNotifications(
   }>
 ): Promise<void> {
   if (notifications.length === 0) return
-  const supabase = createAdminClient()
-  const { error } = await supabase.from('inbox_notifications').insert(
-    notifications.map(n => ({
-      user_id: n.userId,
-      type: n.type,
-      title: n.title,
-      body: n.body ?? null,
-      link_type: n.linkType ?? null,
-      link_id: n.linkId ?? null,
-    }))
-  )
-  if (error) throw error
+  // 逐条写入以应用去重逻辑
+  await Promise.all(notifications.map(n => writeNotification(n)))
 }
 
 export async function getNotifications(userId: string): Promise<InboxNotification[]> {

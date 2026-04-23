@@ -223,7 +223,7 @@ export default function ApprovalsPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">审批管理</h1>
+        <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">审批</h1>
         <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
       </div>
 

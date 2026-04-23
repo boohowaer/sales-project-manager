@@ -32,6 +32,38 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
   member_approved: <CheckCircle className="w-4 h-4 text-emerald-500" />,
 }
 
+// 优先级高的 type 覆盖低的（同一 link_id）
+const TYPE_PRIORITY: Partial<Record<string, number>> = {
+  task_overdue: 2,
+  task_upcoming: 1,
+}
+
+function dedupeNotifications(list: InboxNotification[]): InboxNotification[] {
+  const map = new Map<string, InboxNotification>()
+  // 按时间从旧到新处理，后面的覆盖前面的（保留最新）
+  const sorted = [...list].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+  for (const n of sorted) {
+    const key = n.link_id ? `${n.link_type}:${n.link_id}` : n.id
+    const existing = map.get(key)
+    if (!existing) {
+      map.set(key, n)
+      continue
+    }
+    const existingPriority = TYPE_PRIORITY[existing.type] ?? 0
+    const newPriority = TYPE_PRIORITY[n.type] ?? 0
+    // 新的优先级更高，或同级则取更新的
+    if (newPriority >= existingPriority) {
+      map.set(key, n)
+    }
+  }
+  // 恢复原始时间倒序
+  return [...map.values()].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
@@ -110,7 +142,10 @@ export default function InboxPage() {
 
   const load = useCallback(async () => {
     const res = await fetch('/api/inbox')
-    if (res.ok) setNotifications(await res.json())
+    if (res.ok) {
+      const data: InboxNotification[] = await res.json()
+      setNotifications(dedupeNotifications(data))
+    }
     setLoading(false)
   }, [])
 

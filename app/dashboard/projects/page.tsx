@@ -256,6 +256,7 @@ export default function ProjectsPage() {
           toast('修改已提交审批，原数据继续生效')
         } else {
           try {
+            const oldProject = projects.find((p: any) => p.id === editingId)
             const updatedProject = await updateProject(editingId, updateData)
             toast.success('项目更新成功')
             setProjects(prevProjects =>
@@ -263,6 +264,27 @@ export default function ProjectsPage() {
                 p.id === editingId ? { ...p, ...updatedProject } : p
               )
             )
+
+            // 如果签约日期延后或清除，清除旧的签约提醒
+            const oldDate = oldProject?.expected_close_date ?? null
+            const newDate = updateData.expected_close_date ?? null
+            const signDateChanged = oldDate !== newDate
+            const contractNowSigned = updateData.contract_signed || updateData.has_start_notice
+            if (signDateChanged || contractNowSigned) {
+              // 删除数据库中该项目的 milestone 通知
+              fetch(`/api/inbox/by-link?linkType=project&linkId=${editingId}`, { method: 'DELETE' }).catch(() => {})
+              // 清除 localStorage 今日已写标记
+              try {
+                const d = new Date()
+                const milestoneKey = `inbox_milestone_written_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+                const raw = localStorage.getItem(milestoneKey)
+                if (raw) {
+                  const ids: string[] = JSON.parse(raw)
+                  const filtered = ids.filter(id => !id.endsWith(`_${editingId}`))
+                  localStorage.setItem(milestoneKey, JSON.stringify(filtered))
+                }
+              } catch {}
+            }
           } catch (updateError: any) {
             console.error('更新项目失败，详细错误:', updateError)
             throw updateError

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,14 +23,19 @@ const ROLE_LABELS: Record<TeamRole, string> = {
   sales_rep: '普通销售',
 }
 
-export function MemberTable({ members, onUpdate, currentUserId }: {
+export function MemberTable({ members: initialMembers, onUpdate, currentUserId }: {
   members: Member[]
   onUpdate: () => void
   currentUserId: string | null
 }) {
+  const [members, setMembers] = useState<Member[]>(initialMembers)
   const [loading, setLoading] = useState<string | null>(null)
 
+  useEffect(() => { setMembers(initialMembers) }, [initialMembers])
+
   async function patchMember(memberId: string, updates: Record<string, unknown>) {
+    // 乐观更新：立即反映到 UI
+    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, ...updates } : m))
     setLoading(memberId)
     await fetch(`/api/admin/users/${memberId}`, {
       method: 'PATCH',

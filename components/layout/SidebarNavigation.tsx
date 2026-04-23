@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard,
   Users,
@@ -58,7 +59,7 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
       .catch(() => {})
   }, [hasPendingBadge])
 
-  useEffect(() => {
+  const fetchInboxCount = useCallback(() => {
     if (!hasInboxBadge) return
     fetch('/api/inbox?count=true')
       .then(r => r.json())
@@ -69,6 +70,28 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
       })
       .catch(() => {})
   }, [hasInboxBadge])
+
+  useEffect(() => {
+    if (!hasInboxBadge) return
+    fetchInboxCount()
+
+    const supabase = createClient()
+    const channelName = `inbox-badge-${Math.random().toString(36).slice(2)}`
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'inbox_notifications',
+      }, () => {
+        fetchInboxCount()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [hasInboxBadge, fetchInboxCount])
 
   return (
     <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

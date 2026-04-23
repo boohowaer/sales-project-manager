@@ -18,6 +18,8 @@ import type { Task, Project } from '@/types'
 import { useTeamView } from '@/hooks/useTeamView'
 import { AssignDialog } from '@/components/admin/AssignDialog'
 
+const NO_PROJECT_ID = '__no_project__'
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [projects, setProjects] = useState<Project[]>([])
@@ -108,7 +110,7 @@ export default function TasksPage() {
     setFormData({
       title: task.title,
       description: task.description || '',
-      project_id: task.project_id || '',
+      project_id: task.project_id || NO_PROJECT_ID,
       priority: task.priority,
       due_date: localDueDate,
       status: task.status
@@ -132,33 +134,55 @@ export default function TasksPage() {
 
     try {
       if (editingId) {
+        const oldTask = tasks.find(t => t.id === editingId)
+        const newDueDate = formData.due_date ? new Date(formData.due_date).toISOString() : null
+        const oldDueDate = oldTask?.due_date ?? null
+
         await updateTask(editingId, {
           title: formData.title,
           description: formData.description || null,
-          project_id: formData.project_id,
+          project_id: formData.project_id === NO_PROJECT_ID ? null : formData.project_id,
           priority: formData.priority as any,
-          due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+          due_date: newDueDate,
           status: formData.status as any
         })
-        toast.success('任务更新成功')
 
-        // 重新加载任务数据以获取完整的关联信息
-        await loadData()
+        // 如果到期时间延后了，清除旧的提醒
+        const dueDateDelayed =
+          newDueDate && oldDueDate && new Date(newDueDate) > new Date(oldDueDate)
+        const dueDateCleared = !newDueDate && oldDueDate
+        if (dueDateDelayed || dueDateCleared) {
+          // 删除数据库中该任务的旧提醒
+          fetch(`/api/inbox/by-link?linkType=task&linkId=${editingId}`, { method: 'DELETE' }).catch(() => {})
+          // 清除 localStorage 今日已写标记，让下次检查重新判断
+          try {
+            const d = new Date()
+            const key = `inbox_task_written_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+            const raw = localStorage.getItem(key)
+            if (raw) {
+              const ids: string[] = JSON.parse(raw)
+              const filtered = ids.filter(id => id !== `overdue_${editingId}` && id !== `upcoming_${editingId}`)
+              localStorage.setItem(key, JSON.stringify(filtered))
+            }
+          } catch {}
+        }
+
+        toast.success('任务更新成功')
       } else {
         await createTask({
           title: formData.title,
           description: formData.description || null,
-          project_id: formData.project_id,
+          project_id: formData.project_id === NO_PROJECT_ID ? null : formData.project_id,
           priority: formData.priority as any,
           due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
           status: formData.status as any
         })
         toast.success('任务创建成功')
-        await loadData()
       }
 
       setDialogOpen(false)
       resetForm()
+      loadData()
     } catch (error: any) {
       toast.error(error.message || '操作失败')
     }
@@ -356,7 +380,7 @@ export default function TasksPage() {
                 <SearchableSelect
                   value={formData.project_id}
                   onChange={(value) => setFormData({ ...formData, project_id: value })}
-                  options={projects}
+                  options={[{ id: NO_PROJECT_ID, name: '非项目任务' }, ...projects]}
                   placeholder="搜索并选择项目"
                   label="关联项目"
                   required
@@ -495,7 +519,7 @@ export default function TasksPage() {
                             )}
                           </div>
                           <div className="text-sm text-zinc-600 truncate max-w-[260px]">
-                            {task.projects?.name}
+                            {task.projects?.name ?? '非项目任务'}
                           </div>
                         </div>
                       </td>

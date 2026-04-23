@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil, Trash2, Check, X, FileText, DollarSign } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import type { SettlementStage } from '@/types'
-import { getSettlementStages, createSettlementStage, updateSettlementStage, deleteSettlementStage } from '@/lib/supabase/queries'
+import { getSettlementStages, createSettlementStage, updateSettlementStage, deleteSettlementStage, getUserSettings } from '@/lib/supabase/queries'
 
 interface SettlementStagesManagerProps {
   projectId: string
@@ -173,6 +173,59 @@ export function SettlementStagesManager({
         })
         // 更新本地列表中的ID
         setStageList(prev => prev.map(s => s.id === stage.id ? { ...s, id: newStage.id } : s))
+      }
+
+      // 处理 milestone 通知：计划日期有变更时，清除旧提醒并重置 localStorage 标记
+      // 让 dashboard 页面下次加载时根据新日期重新判断是否推送
+      try {
+        const PLAN_FIELDS: Array<{
+          key: keyof SettlementStage
+          doneKey: keyof SettlementStage
+          localKey: string
+        }> = [
+          { key: 'planned_accepted_date', doneKey: 'accepted', localKey: 'accept' },
+          { key: 'planned_invoiced_date', doneKey: 'invoiced', localKey: 'invoice' },
+          { key: 'planned_paid_date', doneKey: 'paid', localKey: 'payment' },
+        ]
+
+        let needClearProjectNotif = false
+
+        for (const stage of toUpdate) {
+          const oldStage = existingStagesData.find(s => s.id === stage.id)
+          if (!oldStage) continue
+
+          for (const field of PLAN_FIELDS) {
+            const oldDate = oldStage[field.key] as string | null
+            const newDate = stage[field.key] as string | null
+            const isDone = stage[field.doneKey] as boolean
+
+            // 日期变了，或已完成 → 需要清除旧提醒
+            if (oldDate !== newDate || isDone) {
+              needClearProjectNotif = true
+            }
+          }
+        }
+
+        if (needClearProjectNotif) {
+          // 删除数据库中该项目的所有 milestone 通知
+          await fetch(`/api/inbox/by-link?linkType=project&linkId=${projectId}`, { method: 'DELETE' }).catch(() => {})
+
+          // 清除 localStorage 今日已写标记（accept/invoice/payment/sign），让 dashboard 重新推送
+          try {
+            const d = new Date()
+            const milestoneKey = `inbox_milestone_written_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+            const raw = localStorage.getItem(milestoneKey)
+            if (raw) {
+              const ids: string[] = JSON.parse(raw)
+              const filtered = ids.filter(id =>
+                !id.endsWith(`_${projectId}`)
+              )
+              localStorage.setItem(milestoneKey, JSON.stringify(filtered))
+            }
+          } catch {}
+        }
+      } catch {
+        // 通知处理失败不影响保存
       }
 
       setShowConfirmDialog(false)
