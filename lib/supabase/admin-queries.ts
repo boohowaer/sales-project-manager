@@ -8,7 +8,7 @@ function createAdminClient() {
   )
 }
 
-export async function getTeamMembers(teamId: string): Promise<(TeamMember & { email: string })[]> {
+export async function getTeamMembers(teamId: string): Promise<(TeamMember & { email: string; name: string })[]> {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('team_members')
@@ -18,20 +18,17 @@ export async function getTeamMembers(teamId: string): Promise<(TeamMember & { em
   if (error) throw error
   const members = data || []
 
-  // 批量获取 email（auth.users 需要用 admin API）
-  const userIds = members.map((m: any) => m.user_id)
-  const emailMap: Record<string, string> = {}
-  await Promise.all(
-    userIds.map(async (uid: string) => {
-      const { data: user } = await supabase.auth.admin.getUserById(uid)
-      if (user?.user) emailMap[uid] = user.user.email ?? ''
-    })
-  )
+  const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+  const userMap = new Map(users.map(u => [u.id, u]))
 
-  return members.map((m: any) => ({
-    ...m,
-    email: emailMap[m.user_id] ?? '',
-  }))
+  return members.map((m: any) => {
+    const u = userMap.get(m.user_id)
+    return {
+      ...m,
+      email: u?.email ?? '',
+      name: u?.user_metadata?.name ?? '',
+    }
+  })
 }
 
 export async function updateMember(

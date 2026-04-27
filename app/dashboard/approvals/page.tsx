@@ -13,6 +13,22 @@ const TYPE_LABELS: Record<string, string> = {
   update_project: '修改项目',
 }
 
+const PAYLOAD_LABELS: Record<string, string> = {
+  name: '名称',
+  company: '公司',
+  phone: '电话',
+  email: '邮箱',
+  notes: '备注',
+  description: '描述',
+  status: '状态',
+  value: '金额',
+  probability: '成单概率',
+  start_date: '开始日期',
+  expected_close_date: '预计成交',
+  customer_id: '客户ID',
+  belong_year: '归属年份',
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -68,9 +84,16 @@ function ApprovalCard({
         <StatusBadge status={req.status} />
       </div>
 
-      <pre className="text-xs bg-zinc-50 rounded-xl p-3 overflow-x-auto text-zinc-700">
-        {JSON.stringify(req.payload, null, 2)}
-      </pre>
+      <div className="text-xs bg-zinc-50 rounded-xl p-3 space-y-1">
+        {Object.entries(req.payload as Record<string, any>)
+          .filter(([, v]) => v !== null && v !== undefined && v !== '')
+          .map(([k, v]) => (
+            <div key={k} className="flex gap-2">
+              <span className="text-zinc-400 shrink-0">{PAYLOAD_LABELS[k] ?? k}：</span>
+              <span className="text-zinc-700">{String(v)}</span>
+            </div>
+          ))}
+      </div>
 
       {req.status === 'rejected' && req.reject_reason && (
         <p className="text-xs text-rose-600">驳回原因：{req.reject_reason}</p>
@@ -166,7 +189,7 @@ export default function ApprovalsPage() {
       body: JSON.stringify({ action: 'approve' }),
     })
     setLoading(null)
-    if (res.ok) { toast.success('已通过'); loadData() }
+    if (res.ok) { toast.success('已通过'); loadData(); window.dispatchEvent(new Event('refresh-bell')) }
     else toast.error('操作失败')
   }
 
@@ -179,7 +202,7 @@ export default function ApprovalsPage() {
     })
     setLoading(null)
     setRejectTarget(null)
-    if (res.ok) { toast.success('已驳回'); loadData() }
+    if (res.ok) { toast.success('已驳回'); loadData(); window.dispatchEvent(new Event('refresh-bell')) }
     else toast.error('操作失败')
   }
 

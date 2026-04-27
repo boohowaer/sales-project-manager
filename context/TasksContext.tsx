@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { getUpcomingTasks, getUserSettings } from '@/lib/supabase/queries'
+import type { ApprovalRequest } from '@/types'
 
 interface TaskWithProject {
   id: string
@@ -9,15 +10,26 @@ interface TaskWithProject {
   title: string
   due_date: string | null
   status: string
-  projects?: {
-    name: string
-  } | null
+  projects?: { name: string } | null
+}
+
+interface PendingMember {
+  id: string
+  email: string
+  joined_at: string
 }
 
 interface TasksContextType {
   overdueTasks: TaskWithProject[]
   upcomingTasks: TaskWithProject[]
   thisWeekTasks: TaskWithProject[]
+  // 待我审批的
+  pendingApprovals: ApprovalRequest[]
+  // 我提交的还在流程中的
+  myPendingApprovals: ApprovalRequest[]
+  // 待审核的成员申请（仅 super_admin 可见）
+  pendingMembers: PendingMember[]
+  role: string | null
   loading: boolean
   refresh: () => void
 }
@@ -26,6 +38,10 @@ const TasksContext = createContext<TasksContextType>({
   overdueTasks: [],
   upcomingTasks: [],
   thisWeekTasks: [],
+  pendingApprovals: [],
+  myPendingApprovals: [],
+  pendingMembers: [],
+  role: null,
   loading: true,
   refresh: () => {}
 })
@@ -34,109 +50,59 @@ export function useTasks() {
   return useContext(TasksContext)
 }
 
-interface TasksProviderProps {
-  children: ReactNode
-}
-
-function getTodayKey() {
-  const d = new Date()
-  return `inbox_task_written_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-}
-
-function getWrittenToday(): Set<string> {
-  try {
-    const raw = localStorage.getItem(getTodayKey())
-    return new Set(raw ? JSON.parse(raw) : [])
-  } catch {
-    return new Set()
-  }
-}
-
-function markWrittenToday(ids: string[]) {
-  const key = getTodayKey()
-  const existing = getWrittenToday()
-  ids.forEach(id => existing.add(id))
-  localStorage.setItem(key, JSON.stringify([...existing]))
-}
-
-async function writeTaskNotifications(
-  overdue: TaskWithProject[],
-  upcoming: TaskWithProject[]
-) {
-  const written = getWrittenToday()
-  const toWrite: Array<{ type: string; title: string; body: string; linkId: string }> = []
-  const newIds: string[] = []
-
-  overdue.forEach(task => {
-    const sid = `overdue_${task.id}`
-    if (!written.has(sid)) {
-      toWrite.push({
-        type: 'task_overdue',
-        title: '任务已过期',
-        body: `「${task.title}」已过期${task.projects?.name ? `（${task.projects.name}）` : ''}`,
-        linkId: task.id,
-      })
-      newIds.push(sid)
-    }
-  })
-
-  upcoming.forEach(task => {
-    const sid = `upcoming_${task.id}`
-    if (!written.has(sid)) {
-      const dateStr = task.due_date
-        ? new Date(task.due_date).toLocaleDateString('zh-CN')
-        : ''
-      toWrite.push({
-        type: 'task_upcoming',
-        title: '任务即将到期',
-        body: `「${task.title}」即将在 ${dateStr} 到期${task.projects?.name ? `（${task.projects.name}）` : ''}`,
-        linkId: task.id,
-      })
-      newIds.push(sid)
-    }
-  })
-
-  if (toWrite.length === 0) return
-
-  // 先标记，防止并发重复写入
-  markWrittenToday(newIds)
-
-  await Promise.all(
-    toWrite.map(n =>
-      fetch('/api/inbox', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: n.type,
-          title: n.title,
-          body: n.body,
-          linkType: 'task',
-          linkId: n.linkId,
-        }),
-      })
-    )
-  )
-}
-
-export function TasksProvider({ children }: TasksProviderProps) {
+export function TasksProvider({ children }: { children: ReactNode }) {
   const [overdueTasks, setOverdueTasks] = useState<TaskWithProject[]>([])
   const [upcomingTasks, setUpcomingTasks] = useState<TaskWithProject[]>([])
   const [thisWeekTasks, setThisWeekTasks] = useState<TaskWithProject[]>([])
+  const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>([])
+  const [myPendingApprovals, setMyPendingApprovals] = useState<ApprovalRequest[]>([])
+  const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([])
+  const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const loadTasks = async () => {
     try {
-      const settings = await getUserSettings()
+      const [settings, meRes, approvalsRes, mineRes] = await Promise.all([
+        getUserSettings(),
+        fetch('/api/me').then(r => r.json()),
+        fetch('/api/approvals').then(r => r.ok ? r.json() : []),
+        fetch('/api/approvals?mine=true').then(r => r.ok ? r.json() : []),
+      ])
+
+      const userRole = meRes.role ?? null
+      setRole(userRole)
+
       const reminderHours = settings?.reminder_advance_hours ?? 24
       const data = await getUpcomingTasks(undefined, reminderHours)
-      const overdue = data.overdue as TaskWithProject[]
-      const upcoming = data.upcoming as TaskWithProject[]
-      setOverdueTasks(overdue)
-      setUpcomingTasks(upcoming)
+      setOverdueTasks(data.overdue as TaskWithProject[])
+      setUpcomingTasks(data.upcoming as TaskWithProject[])
       setThisWeekTasks(data.thisWeek as TaskWithProject[])
-      writeTaskNotifications(overdue, upcoming).catch(() => {})
+
+      // 待我审批：status=pending 且轮到我这步
+      const allApprovals: ApprovalRequest[] = Array.isArray(approvalsRes) ? approvalsRes : []
+      const myTurn = allApprovals.filter(r => {
+        if (r.status !== 'pending') return false
+        if (userRole === 'sales_manager') return r.current_step === 1
+        if (userRole === 'super_admin') return r.current_step === r.total_steps
+        return false
+      })
+      setPendingApprovals(myTurn)
+
+      // 我提交的还在流程中（排除已在"待我审批"里的）
+      const myTurnIds = new Set(myTurn.map(r => r.id))
+      const mine: ApprovalRequest[] = Array.isArray(mineRes) ? mineRes : []
+      setMyPendingApprovals(mine.filter(r => r.status === 'pending' && !myTurnIds.has(r.id)))
+
+      // 待审核成员（仅 super_admin）
+      if (userRole === 'super_admin') {
+        const membersRes = await fetch('/api/admin/users').then(r => r.ok ? r.json() : [])
+        const pending = (Array.isArray(membersRes) ? membersRes : []).filter((m: any) => m.status === 'pending')
+        setPendingMembers(pending)
+      } else {
+        setPendingMembers([])
+      }
     } catch (error) {
-      console.error('加载任务失败:', error)
+      console.error('加载数据失败:', error)
     } finally {
       setLoading(false)
     }
@@ -146,8 +112,18 @@ export function TasksProvider({ children }: TasksProviderProps) {
     loadTasks()
   }, [])
 
+  useEffect(() => {
+    const handler = () => loadTasks()
+    window.addEventListener('refresh-bell', handler)
+    return () => window.removeEventListener('refresh-bell', handler)
+  }, [])
+
   return (
-    <TasksContext.Provider value={{ overdueTasks, upcomingTasks, thisWeekTasks, loading, refresh: loadTasks }}>
+    <TasksContext.Provider value={{
+      overdueTasks, upcomingTasks, thisWeekTasks,
+      pendingApprovals, myPendingApprovals, pendingMembers,
+      role, loading, refresh: loadTasks
+    }}>
       {children}
     </TasksContext.Provider>
   )

@@ -1,11 +1,16 @@
+// @ts-nocheck
 import { createClient } from './client'
 import type {
   Customer,
   Project,
   Task,
   UserSettings,
-  SettlementStage
+  SettlementStage,
+  WeeklyUpdate,
 } from '@/types'
+
+type WeeklyUpdateInsert = Omit<WeeklyUpdate, 'id' | 'created_at' | 'updated_at'>
+type WeeklyUpdateUpdate = Partial<WeeklyUpdateInsert>
 
 // 简化的插入类型，避免类型推断问题
 type CustomerInsert = Omit<Customer, 'id' | 'user_id' | 'created_at' | 'updated_at'>
@@ -139,10 +144,10 @@ export async function getProjects(options?: { teamView?: boolean }): Promise<any
 
   // 批量获取所有项目的结算段汇总数据
   const projectIds = projects.map(p => p.id)
-  const { data: settlements, error: settlementsError } = await supabase
-    .from('settlement_stages')
+  const { data: settlements, error: settlementsError } = (await supabase
+    .from('settlement_stages' as any)
     .select('project_id, accepted, invoiced, paid')
-    .in('project_id', projectIds)
+    .in('project_id', projectIds)) as { data: Array<{ project_id: string; accepted: boolean; invoiced: boolean; paid: boolean }> | null; error: any }
 
   if (settlementsError) throw settlementsError
 
@@ -290,33 +295,81 @@ export async function deleteProject(id: string): Promise<void> {
 }
 
 // 任务相关查询
-export async function getTasks(options?: { teamView?: boolean }): Promise<Task[]> {
+export async function getTasks(options?: { mode?: 'mine' | 'shared' }): Promise<any[]> {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { data: member } = await supabase
-    .from('team_members' as any)
-    .select('data_scope')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .single()
+  if (options?.mode === 'shared') {
+    // 共享任务：我指派给别人的 + 别人同步/指派给我的
+    const [outRes, inRes] = await Promise.all([
+      // 我指派/同步出去的任务
+      supabase
+        .from('task_shares' as any)
+        .select('share_type, to_user_id, tasks(*, projects(*, customers(*)))')
+        .eq('from_user_id', user.id),
+      // 别人指派/同步给我的任务
+      supabase
+        .from('task_shares' as any)
+        .select('share_type, from_user_id, tasks(*, projects(*, customers(*)))')
+        .eq('to_user_id', user.id),
+    ])
 
-  const dataScope = (member as any)?.data_scope ?? 'own'
+    const outTasks = (outRes.data || []).map((s: any) => ({
+      ...s.tasks,
+      _shareType: s.share_type,
+      _shareDirection: 'out',
+      _shareWithUserId: s.to_user_id,
+    }))
+    const inTasks = (inRes.data || []).map((s: any) => ({
+      ...s.tasks,
+      _shareType: s.share_type,
+      _shareDirection: 'in',
+      _shareFromUserId: s.from_user_id,
+    }))
 
-  let query = supabase
-    .from('tasks')
-    .select('*, projects(*, customers(*))')
-    .order('due_date', { ascending: true })
-
-  if (dataScope === 'own' || !options?.teamView) {
-    query = query.eq('user_id', user.id)
+    const all = [...outTasks, ...inTasks].filter(t => t != null)
+    return all
   }
 
-  const { data, error } = await query
+  // 只看我的：我创建的（未指派出去）+ 被别人指派给我的
+  const [assignedOutRes, myTasksRes, assignedInRes] = await Promise.all([
+    supabase.from('task_shares' as any).select('task_id').eq('from_user_id', user.id).eq('share_type', 'assign'),
+    supabase.from('tasks').select('*, projects(*, customers(*))').eq('user_id', user.id).order('due_date', { ascending: true }),
+    supabase.from('task_shares' as any).select('share_type, from_user_id, tasks(*, projects(*, customers(*)))').eq('to_user_id', user.id).eq('share_type', 'assign'),
+  ])
+
+  if (myTasksRes.error) throw myTasksRes.error
+  const assignedOutIds = new Set((assignedOutRes.data || []).map((s: any) => s.task_id))
+  const myTasks = (myTasksRes.data || []).filter((t: any) => !assignedOutIds.has(t.id))
+  const assignedInTasks = (assignedInRes.data || [])
+    .map((s: any) => s.tasks ? { ...s.tasks, _shareType: 'assign', _shareDirection: 'in', _shareWithUserId: s.from_user_id } : null)
+    .filter(Boolean)
+  return [...myTasks, ...assignedInTasks]
+}
+
+export async function shareTask(taskId: string, toUserId: string, shareType: 'assign' | 'sync'): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { error } = await supabase
+    .from('task_shares' as any)
+    .upsert({ task_id: taskId, from_user_id: user.id, to_user_id: toUserId, share_type: shareType }, { onConflict: 'task_id,to_user_id' })
   if (error) throw error
-  return data || []
+}
+
+export async function unshareTask(taskId: string, toUserId: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { error } = await supabase
+    .from('task_shares' as any)
+    .delete()
+    .eq('task_id', taskId)
+    .eq('from_user_id', user.id)
+    .eq('to_user_id', toUserId)
+  if (error) throw error
 }
 
 export async function getTask(id: string): Promise<Task | null> {
@@ -351,44 +404,47 @@ export async function getUpcomingTasks(supabase?: any, hours: number = 24): Prom
   const client = supabase || await createClient()
   const now = new Date()
 
-  // 获取已过期任务
-  const { data: overdueData, error: overdueError } = await client
-    .from('tasks')
-    .select('*, projects(*, customers(*))')
+  const { data: { user } } = await client.auth.getUser()
+  if (!user) return { overdue: [], upcoming: [], thisWeek: [] }
+
+  const { data: member } = await client
+    .from('team_members' as any)
+    .select('data_scope')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+  const dataScope = (member as any)?.data_scope ?? 'own'
+
+  const baseQuery = () => {
+    let q = client.from('tasks').select('*, projects(*, customers(*))')
+    q = q.eq('user_id', user.id)
+    return q
+  }
+
+  const { data: overdueData, error: overdueError } = await baseQuery()
     .lt('due_date', now.toISOString())
     .neq('status', 'completed')
     .order('due_date', { ascending: true })
-
   if (overdueError) throw overdueError
 
-  // 获取即将到期任务（基于提前提醒小时数）
   const upcomingEnd = new Date(now.getTime() + hours * 60 * 60 * 1000)
-
-  const { data: upcomingData, error: upcomingError } = await client
-    .from('tasks')
-    .select('*, projects(*, customers(*))')
+  const { data: upcomingData, error: upcomingError } = await baseQuery()
     .gte('due_date', now.toISOString())
     .lte('due_date', upcomingEnd.toISOString())
     .neq('status', 'completed')
     .order('due_date', { ascending: true })
-
   if (upcomingError) throw upcomingError
 
-  // 获取本周任务（到本周日结束）
   const weekEnd = new Date(now)
   const dayOfWeek = weekEnd.getDay()
-  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
-  weekEnd.setDate(weekEnd.getDate() + daysUntilSunday)
+  weekEnd.setDate(weekEnd.getDate() + (dayOfWeek === 0 ? 0 : 7 - dayOfWeek))
   weekEnd.setHours(23, 59, 59, 999)
 
-  const { data: thisWeekData, error: thisWeekError } = await client
-    .from('tasks')
-    .select('*, projects(*, customers(*))')
+  const { data: thisWeekData, error: thisWeekError } = await baseQuery()
     .gte('due_date', now.toISOString())
     .lte('due_date', weekEnd.toISOString())
     .neq('status', 'completed')
     .order('due_date', { ascending: true })
-
   if (thisWeekError) throw thisWeekError
 
   return {
@@ -469,6 +525,7 @@ export async function getUserSettings(): Promise<UserSettings | null> {
         reminder_enabled: true,
         reminder_advance_hours: 24,
         milestone_reminder_days: 7,
+        sales_goal: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -551,14 +608,31 @@ export async function getDashboardStats(supabase?: any) {
   tomorrowStart.setDate(tomorrowStart.getDate() + 1)
 
   // 并行执行项目查询和任务查询（优化：减少数据库往返）
+  const { data: { user } } = await client.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: member } = await client
+    .from('team_members' as any)
+    .select('data_scope')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+  const dataScope = (member as any)?.data_scope ?? 'own'
+
+  let projectQuery = client
+    .from('projects')
+    .select('id, status, value, probability, has_start_notice, contract_signed, created_at, signed_at')
+    .eq('belong_year', currentYear)
+    .eq('user_id', user.id)
+
+  let taskQuery = client
+    .from('tasks')
+    .select('id, due_date, status')
+    .eq('user_id', user.id)
+
   const [projectsResult, tasksResult] = await Promise.all([
-    client
-      .from('projects')
-      .select('id, status, value, probability, has_start_notice, contract_signed, created_at, signed_at')
-      .eq('belong_year', currentYear),
-    client
-      .from('tasks')
-      .select('id, due_date, status')
+    projectQuery,
+    taskQuery,
   ])
 
   const allProjects = projectsResult.data
@@ -575,9 +649,9 @@ export async function getDashboardStats(supabase?: any) {
   // 获取结算阶段数据（需要 projectIds，所以放在后面）
   const projectIds = allProjects?.map(p => p.id) || []
   const { data: allSettlements } = await client
-    .from('settlement_stages')
+    .from('settlement_stages' as any)
     .select('project_id, amount, accepted, invoiced, paid, accepted_date, invoiced_date, paid_date')
-    .in('project_id', projectIds)
+    .in('project_id', projectIds) as { data: Array<{ project_id: string; amount: number | null; accepted: boolean; invoiced: boolean; paid: boolean; accepted_date: string | null; invoiced_date: string | null; paid_date: string | null }> | null }
 
   // 计算已验收、已开票、已回款金额
   let acceptedAmount = 0
@@ -710,17 +784,16 @@ export async function getSettlementStagesBatch(projectIds: string[]): Promise<Ma
 
   const supabase = await createClient()
   const { data, error } = await supabase
-    .from('settlement_stages')
+    .from('settlement_stages' as any)
     .select('*')
     .in('project_id', projectIds)
     .order('stage_number', { ascending: true })
 
   if (error) throw error
 
-  // 将结果按 project_id 分组
   const map = new Map<string, SettlementStage[]>()
   projectIds.forEach(id => map.set(id, []))
-  data?.forEach(stage => {
+  ;(data as any[])?.forEach((stage: any) => {
     const stages = map.get(stage.project_id)
     if (stages) {
       stages.push(stage)

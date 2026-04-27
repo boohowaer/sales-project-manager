@@ -250,21 +250,21 @@ export type Project = Database['public']['Tables']['projects']['Row']
 export type Task = Database['public']['Tables']['tasks']['Row']
 export type UserSettings = Database['public']['Tables']['user_settings']['Row']
 export type SettlementStage = Database['public']['Tables']['settlement_stages']['Row']
-export type WeeklyUpdate = Database['public']['Tables']['weekly_updates']['Row']
+export type WeeklyUpdate = { id: string; project_id: string; week: string; content: string | null; contract_signed: boolean; settlement_accepted: number; settlement_invoiced: number; settlement_paid: number; settlement_total: number; created_at: string; updated_at: string; team_id: string | null }
 
 export type CustomerInsert = Database['public']['Tables']['customers']['Insert']
 export type ProjectInsert = Database['public']['Tables']['projects']['Insert']
 export type TaskInsert = Database['public']['Tables']['tasks']['Insert']
 export type UserSettingsInsert = Database['public']['Tables']['user_settings']['Insert']
 export type SettlementStageInsert = Database['public']['Tables']['settlement_stages']['Insert']
-export type WeeklyUpdateInsert = Database['public']['Tables']['weekly_updates']['Insert']
+export type WeeklyUpdateInsert = Omit<WeeklyUpdate, 'id' | 'created_at' | 'updated_at'>
+export type WeeklyUpdateUpdate = Partial<WeeklyUpdateInsert>
 
 export type CustomerUpdate = Database['public']['Tables']['customers']['Update']
 export type ProjectUpdate = Database['public']['Tables']['projects']['Update']
 export type TaskUpdate = Database['public']['Tables']['tasks']['Update']
 export type UserSettingsUpdate = Database['public']['Tables']['user_settings']['Update']
 export type SettlementStageUpdate = Database['public']['Tables']['settlement_stages']['Update']
-export type WeeklyUpdateUpdate = Database['public']['Tables']['weekly_updates']['Update']
 
 // ─── Team types ───────────────────────────────────────────────
 
@@ -341,9 +341,6 @@ export type UserTeamContext = {
 }
 
 export type InboxNotificationType =
-  | 'task_overdue'
-  | 'task_upcoming'
-  | 'milestone'
   | 'approval_submitted'
   | 'approval_approved'
   | 'approval_rejected'
@@ -353,17 +350,4 @@ export type InboxNotificationType =
   | 'member_request'
   | 'member_approved'
 
-export type InboxLinkType = 'task' | 'approval' | 'project'
-
-export type InboxNotification = {
-  id: string
-  user_id: string
-  type: InboxNotificationType
-  title: string
-  body: string | null
-  link_type: InboxLinkType | null
-  link_id: string | null
-  is_read: boolean
-  browser_pushed: boolean
-  created_at: string
-}
+export type InboxLinkType = 'approval'

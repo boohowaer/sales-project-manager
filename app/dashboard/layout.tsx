@@ -4,7 +4,6 @@ import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
 import { LogoutButton } from '@/components/auth/LogoutButton'
 import { MobileSidebar } from '@/components/layout/MobileSidebar'
 import { TasksProviderWrapper } from '@/components/layout/TasksProvider'
-import { BrowserNotificationProvider } from '@/components/layout/BrowserNotificationProvider'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 
 export default async function DashboardLayout({
@@ -29,11 +28,10 @@ export default async function DashboardLayout({
 
   const navigation = [
     { name: '仪表板', href: '/dashboard', iconName: 'LayoutDashboard' },
-    { name: '收件箱', href: '/dashboard/inbox', iconName: 'Inbox', showInboxBadge: true },
     { name: '客户', href: '/dashboard/customers', iconName: 'Users' },
     { name: '项目', href: '/dashboard/projects', iconName: 'FolderKanban' },
-    { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
     { name: '任务', href: '/dashboard/tasks', iconName: 'CheckSquare' },
+    { name: '进展', href: '/dashboard/updates', iconName: 'FileText' },
     { name: '审批', href: '/dashboard/approvals', iconName: 'ClipboardCheck', showPendingBadge: isManager },
     ...(ctx?.role === 'super_admin' ? [
       { name: '成员管理', href: '/dashboard/admin/users', iconName: 'UserCog' },
@@ -66,15 +64,13 @@ export default async function DashboardLayout({
       {/* 移动端抽屉式侧边栏 */}
       <MobileSidebar navigation={navigation} />
 
-      <BrowserNotificationProvider>
-        <TasksProviderWrapper>
+      <TasksProviderWrapper>
           <div className="md:pl-64">
             <main className="min-h-screen">
               {children}
             </main>
           </div>
         </TasksProviderWrapper>
-      </BrowserNotificationProvider>
     </div>
   )
 }

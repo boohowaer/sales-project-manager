@@ -115,6 +115,14 @@ export default function ProjectsPage() {
     }
     return []
   })
+  const [filterSales, setFilterSales] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('projects-filterSales')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
+  const [teamMembers, setTeamMembers] = useState<{user_id: string, email: string, name?: string}[]>([])
   const [filterMilestone, setFilterMilestone] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('projects-filterMilestone')
@@ -135,8 +143,9 @@ export default function ProjectsPage() {
       localStorage.setItem('projects-filterPaidStatus', JSON.stringify(filterPaidStatus))
       localStorage.setItem('projects-filterBelongYear', JSON.stringify(filterBelongYear))
       localStorage.setItem('projects-filterMilestone', JSON.stringify(filterMilestone))
+      localStorage.setItem('projects-filterSales', JSON.stringify(filterSales))
     }
-  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear, filterMilestone])
+  }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear, filterMilestone, filterSales])
 
   // 任务对话框状态
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
@@ -190,12 +199,15 @@ export default function ProjectsPage() {
 
   const loadData = async () => {
     try {
-      const [projectsData, customersData] = await Promise.all([
+      const fetches: Promise<any>[] = [
         getProjects({ teamView: viewMode === 'team' }),
         getCustomers()
-      ])
+      ]
+      if (viewMode === 'team') fetches.push(fetch('/api/admin/users').then(r => r.ok ? r.json() : []))
+      const [projectsData, customersData, membersData] = await Promise.all(fetches)
       setProjects(projectsData)
       setCustomers(customersData)
+      if (membersData) setTeamMembers(membersData)
 
       const projectIds = projectsData.map((p: any) => p.id)
       const map = await getSettlementStagesBatch(projectIds)
@@ -254,6 +266,7 @@ export default function ProjectsPage() {
             body: JSON.stringify({ type: 'update_project', targetId: editingId, payload: updateData }),
           })
           toast('修改已提交审批，原数据继续生效')
+          window.dispatchEvent(new Event('refresh-bell'))
         } else {
           try {
             const oldProject = projects.find((p: any) => p.id === editingId)
@@ -264,27 +277,8 @@ export default function ProjectsPage() {
                 p.id === editingId ? { ...p, ...updatedProject } : p
               )
             )
+            window.dispatchEvent(new Event('refresh-bell'))
 
-            // 如果签约日期延后或清除，清除旧的签约提醒
-            const oldDate = oldProject?.expected_close_date ?? null
-            const newDate = updateData.expected_close_date ?? null
-            const signDateChanged = oldDate !== newDate
-            const contractNowSigned = updateData.contract_signed || updateData.has_start_notice
-            if (signDateChanged || contractNowSigned) {
-              // 删除数据库中该项目的 milestone 通知
-              fetch(`/api/inbox/by-link?linkType=project&linkId=${editingId}`, { method: 'DELETE' }).catch(() => {})
-              // 清除 localStorage 今日已写标记
-              try {
-                const d = new Date()
-                const milestoneKey = `inbox_milestone_written_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-                const raw = localStorage.getItem(milestoneKey)
-                if (raw) {
-                  const ids: string[] = JSON.parse(raw)
-                  const filtered = ids.filter(id => !id.endsWith(`_${editingId}`))
-                  localStorage.setItem(milestoneKey, JSON.stringify(filtered))
-                }
-              } catch {}
-            }
           } catch (updateError: any) {
             console.error('更新项目失败，详细错误:', updateError)
             throw updateError
@@ -315,6 +309,7 @@ export default function ProjectsPage() {
             body: JSON.stringify({ type: 'create_project', payload: createData }),
           })
           toast('已提交审批，等待经理审核')
+          window.dispatchEvent(new Event('refresh-bell'))
         } else {
           const newProject = await createProject(createData)
           toast.success('项目创建成功')
@@ -403,6 +398,7 @@ export default function ProjectsPage() {
           expected_close_date: '',
           has_start_notice: false,
           contract_signed: false,
+          signed_at: '',
           settlement_stages: 1,
           belong_year: ''
         })
@@ -542,6 +538,11 @@ export default function ProjectsPage() {
       }
     }
 
+    // 归属销售筛选（仅团队视图）
+    if (filterSales.length > 0) {
+      if (!filterSales.includes(project.user_id)) return false
+    }
+
     // 关注节点筛选（未来30天 + 已逾期）
     if (filterMilestone.length > 0) {
       const today = new Date(new Date().toDateString())
@@ -679,9 +680,9 @@ export default function ProjectsPage() {
             <Filter className="w-4 h-4 mr-2" />
             筛选
             {(filterProjectStatus.length > 0 || filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
-              filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0 || filterMilestone.length > 0) && (
+              filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0 || filterMilestone.length > 0 || filterSales.length > 0) && (
               <Badge variant="secondary" className="ml-2 bg-zinc-900 text-white">
-                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length + filterMilestone.length}
+                {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length + filterMilestone.length + filterSales.length}
               </Badge>
             )}
           </Button>
@@ -720,7 +721,7 @@ export default function ProjectsPage() {
                   setFilterPaidStatus([])
                   setFilterBelongYear([])
                   setFilterMilestone([])
-                }}
+                  setFilterSales([])                }}
                 variant="ghost"
                 size="sm"
                 className="text-zinc-500 hover:text-zinc-700"
@@ -731,7 +732,7 @@ export default function ProjectsPage() {
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-7 gap-4 px-2">
+          <div className={`grid ${viewMode === 'team' && teamMembers.length > 0 ? 'grid-cols-8' : 'grid-cols-7'} gap-4 px-2`}>
             {/* 项目状态 */}
             <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">项目状态</Label>
@@ -888,8 +889,33 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            {/* 关注节点 */}
-            <div>
+            {/* 归属销售（仅团队视图） */}
+            {viewMode === 'team' && teamMembers.length > 0 && (
+              <div>
+                <Label className="text-xs font-medium text-zinc-700 mb-2 block">归属销售</Label>
+                <div className="space-y-1.5">
+                  {teamMembers.map(m => (
+                    <label key={m.user_id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filterSales.includes(m.user_id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFilterSales([...filterSales, m.user_id])
+                          } else {
+                            setFilterSales(filterSales.filter(id => id !== m.user_id))
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
+                      />
+                      <span className="text-zinc-700">{m.name || '未知'}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 关注节点 */}            <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">关注节点</Label>
               <div className="space-y-1.5">
                 {['计划签约', '计划验收', '计划开票', '计划回款'].map(type => (
@@ -1134,7 +1160,7 @@ export default function ProjectsPage() {
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className="text-xs text-zinc-500 shrink-0">{project.customers?.name}</span>
                     <h3 className="font-semibold text-sm truncate">{project.name}</h3>
-                    <Badge variant={getStatusColor2(project.status) as any} className="shrink-0">
+                    <Badge variant={getStatusColor2(project.status) as any} className={`shrink-0${project.status === 'won' ? ' bg-transparent border-transparent text-emerald-600 hover:bg-transparent' : ''}`}>
                       {getStatusText2(project.status)}
                     </Badge>
                   </div>
@@ -1193,7 +1219,7 @@ export default function ProjectsPage() {
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {/* 归属年份标签 */}
                   {project.belong_year && (
-                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[11px] rounded-full font-medium">
+                    <span className={`px-2 py-0.5 text-[11px] rounded-full font-medium ${project.belong_year === new Date().getFullYear() ? 'bg-indigo-100 text-indigo-700' : 'bg-zinc-100 text-zinc-500'}`}>
                       {project.belong_year}年
                     </span>
                   )}

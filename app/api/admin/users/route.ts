@@ -4,7 +4,7 @@ import { getTeamMembers, createInvitation } from '@/lib/supabase/admin-queries'
 
 export async function GET() {
   const ctx = await getUserTeamContext()
-  if (!ctx || !isManager(ctx.role)) {
+  if (!ctx) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const members = await getTeamMembers(ctx.teamId)

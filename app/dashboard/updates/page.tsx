@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { getProjects, getWeeklyUpdates, getProjectWeeklyUpdates, createWeeklyUpdate, updateWeeklyUpdate, deleteWeeklyUpdate, getSettlementStages, getSettlementStagesBatch, createTask, getTasks, getTasksByProject } from '@/lib/supabase/queries'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,8 +16,11 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Pencil, Trash2, Clock, Search, CheckCircle, Edit3, Filter, X, RotateCcw, CheckSquare, ListTodo } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
+const ProjectDetailModal = dynamic(() => import('@/components/projects/ProjectDetailModal').then(m => ({ default: m.ProjectDetailModal })), { ssr: false })
+
 export default function UpdatesPage() {
   const [projects, setProjects] = useState<any[]>([])
+  const [selectedProject, setSelectedProject] = useState<any>(null)
   const [weeklyUpdates, setWeeklyUpdates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
@@ -138,25 +142,12 @@ export default function UpdatesPage() {
       const projectWithUpdates = projectsData.map((project: any) => {
         const projectUpdates = updatesData.filter((u: any) => u.project_id === project.id)
         const latestUpdate = projectUpdates[0]
-        const settlements = settlementsMapData.get(project.id) || []
         const currentWeekUpdate = projectUpdates.find((u: any) => u.week === week)
-
-        // 计算结算段状态
-        const totalStages = project.settlement_stages || 1
-        const acceptedCount = settlements.filter((s: any) => s.accepted).length
-        const invoicedCount = settlements.filter((s: any) => s.invoiced).length
-        const paidCount = settlements.filter((s: any) => s.paid).length
 
         return {
           ...project,
           latest_update: latestUpdate,
           current_week_update: currentWeekUpdate,
-          settlement_summary: {
-            total: totalStages,
-            accepted: acceptedCount,
-            invoiced: invoicedCount,
-            paid: paidCount
-          }
         }
       })
 
@@ -258,7 +249,7 @@ export default function UpdatesPage() {
           settlement_invoiced: invoicedCount,
           settlement_paid: paidCount,
           settlement_total: totalStages
-        })
+        } as any)
         toast.success('进展添加成功')
       }
 
@@ -592,7 +583,10 @@ export default function UpdatesPage() {
                             <span className="text-xs text-zinc-500">¥{project.value.toLocaleString()}</span>
                           )}
                         </div>
-                        <div className="font-medium text-sm truncate max-w-[220px]">{project.name}</div>
+                        <button
+                          onClick={() => setSelectedProject(project)}
+                          className="font-medium text-sm truncate max-w-[220px] text-left hover:underline underline-offset-2 decoration-zinc-400 transition-all"
+                        >{project.name}</button>
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -1362,6 +1356,16 @@ export default function UpdatesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ProjectDetailModal
+        project={selectedProject}
+        open={!!selectedProject}
+        onClose={() => setSelectedProject(null)}
+        onUpdated={updated => {
+          setProjects(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+          setSelectedProject(null)
+        }}
+      />
     </div>
   )
 }

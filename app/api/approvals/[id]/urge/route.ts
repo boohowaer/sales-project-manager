@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 import { urgeRequest } from '@/lib/supabase/approval-queries'
-import { writeNotifications, getTeamSalesManagers, getTeamSuperAdmins } from '@/lib/supabase/inbox-queries'
+import { writeNotifications, getTeamSalesManagers, getTeamSuperAdmins } from '@/lib/supabase/notification-queries'
 import { createClient } from '@supabase/supabase-js'
 
 function createAdminClient() {
