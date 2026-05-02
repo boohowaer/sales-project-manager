@@ -37,17 +37,18 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
   const [fontSize, setFontSize] = useState(14)
 
   useEffect(() => {
-    // 立即从 localStorage 应用，避免闪烁
+    // 立即从 localStorage 应用，避免闪烁；layout.tsx 内联 script 在无缓存时不会设 fontFamily，这里补齐
     const local = getLocalFontSettings()
     setFontFamily(local.fontFamily)
     setFontSize(local.fontSize)
     applyFontSettings(local.fontFamily, local.fontSize)
 
-    // 再从数据库同步最新值
+    // 再从数据库同步最新值，仅在与本地不一致时才重排，避免无谓的样式抖动
     getUserSettings().then(settings => {
       if (!settings) return
       const font = settings.font_family || 'Inter'
       const size = settings.font_size || 14
+      if (font === local.fontFamily && size === local.fontSize) return
       setFontFamily(font)
       setFontSize(size)
       applyFontSettings(font, size)

@@ -24,21 +24,53 @@ type UserSettingsUpdate = Partial<Omit<UserSettings, 'id' | 'user_id' | 'created
 type SettlementStageInsert = Omit<SettlementStage, 'id' | 'created_at' | 'updated_at'>
 type SettlementStageUpdate = Partial<Omit<SettlementStage, 'id' | 'created_at' | 'updated_at'>>
 
+// ============ 性能优化：读取查询专用辅助函数 ============
+// 用 getSession 替代 getUser，避免每次读取都向 Auth 服务器发请求验证 JWT
+// RLS 策略已在数据库侧用 auth.uid() 校验权限，客户端不需要二次验证
+async function getSessionUser(supabase: any) {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.user ?? null
+}
+
+// 进程内缓存 data_scope（5 分钟 TTL）。data_scope 几乎不变，重复查浪费一次 RTT。
+let cachedDataScope: { userId: string; scope: 'own' | 'team'; expiresAt: number } | null = null
+let cachedTeamId: { userId: string; teamId: string | null; expiresAt: number } | null = null
+
+async function getDataScope(supabase: any, userId: string): Promise<'own' | 'team'> {
+  if (cachedDataScope?.userId === userId && cachedDataScope.expiresAt > Date.now()) {
+    return cachedDataScope.scope
+  }
+  const { data: member } = await supabase
+    .from('team_members' as any)
+    .select('data_scope')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .single()
+  const scope = ((member as any)?.data_scope ?? 'own') as 'own' | 'team'
+  cachedDataScope = { userId, scope, expiresAt: Date.now() + 5 * 60 * 1000 }
+  return scope
+}
+
+// 浏览器侧 auth 状态变化时清空缓存（登出/切换账号）
+if (typeof window !== 'undefined') {
+  try {
+    createClient().auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        cachedDataScope = null
+        cachedTeamId = null
+      }
+    })
+  } catch {}
+}
+
 // 客户相关查询
 export async function getCustomers(options?: { teamView?: boolean }): Promise<Customer[]> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) throw new Error('Not authenticated')
 
-  const { data: member } = await supabase
-    .from('team_members' as any)
-    .select('data_scope')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .single()
-
-  const dataScope = (member as any)?.data_scope ?? 'own'
+  const dataScope = await getDataScope(supabase, user.id)
 
   let query = supabase
     .from('customers')
@@ -104,6 +136,14 @@ export async function updateCustomer(id: string, customer: Partial<Customer>): P
 
 export async function deleteCustomer(id: string): Promise<void> {
   const supabase = await createClient()
+
+  // 先将关联项目的 customer_id 设为 null，避免级联删除
+  await supabase
+    .from('projects')
+    .update({ customer_id: null } as any)
+    .eq('customer_id', id)
+
+  // 再删除客户
   const { error } = await supabase
     .from('customers')
     .delete()
@@ -116,17 +156,10 @@ export async function deleteCustomer(id: string): Promise<void> {
 export async function getProjects(options?: { teamView?: boolean }): Promise<any[]> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) throw new Error('Not authenticated')
 
-  const { data: member } = await supabase
-    .from('team_members' as any)
-    .select('data_scope')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .single()
-
-  const dataScope = (member as any)?.data_scope ?? 'own'
+  const dataScope = await getDataScope(supabase, user.id)
 
   let projectQuery = supabase
     .from('projects')
@@ -142,19 +175,26 @@ export async function getProjects(options?: { teamView?: boolean }): Promise<any
   if (projectsError) throw projectsError
   if (!projects || projects.length === 0) return []
 
-  // 批量获取所有项目的结算段汇总数据
+  // 批量获取所有项目的结算段数据
   const projectIds = projects.map(p => p.id)
   const { data: settlements, error: settlementsError } = (await supabase
     .from('settlement_stages' as any)
-    .select('project_id, accepted, invoiced, paid')
-    .in('project_id', projectIds)) as { data: Array<{ project_id: string; accepted: boolean; invoiced: boolean; paid: boolean }> | null; error: any }
+    .select('*')
+    .in('project_id', projectIds)) as { data: any[] | null; error: any }
 
   if (settlementsError) throw settlementsError
 
+  // 构建 project_id -> settlements 的 Map
+  const settlementsByProject = new Map<string, any[]>()
+  projectIds.forEach(id => settlementsByProject.set(id, []))
+  settlements?.forEach((s: any) => {
+    const arr = settlementsByProject.get(s.project_id)
+    if (arr) arr.push(s)
+  })
+
   // 为每个项目计算结算段状态
   return projects.map((project: any) => {
-    const projectSettlements = settlements?.filter(s => s.project_id === project.id) || []
-    // 根据实际的结算段数量计算，如果没有结算段则默认为1
+    const projectSettlements = settlementsByProject.get(project.id) || []
     const actualStagesCount = projectSettlements.length > 0 ? projectSettlements.length : 1
     const acceptedCount = projectSettlements.filter(s => s.accepted).length
     const invoicedCount = projectSettlements.filter(s => s.invoiced).length
@@ -162,14 +202,47 @@ export async function getProjects(options?: { teamView?: boolean }): Promise<any
 
     return {
       ...project,
-      settlement_stages: actualStagesCount, // 使用实际的结算段数量
+      settlement_stages: actualStagesCount,
       settlement_summary: {
         total: actualStagesCount,
         accepted: acceptedCount,
         invoiced: invoicedCount,
         paid: paidCount
-      }
+      },
+      _settlements: projectSettlements
     }
+  })
+}
+
+export async function getProjectsForTaskSelect(): Promise<{ id: string; name: string; belong_year?: number; value?: number; settlement_summary?: { paid: number; total: number } }[]> {
+  const supabase = await createClient()
+  const user = await getSessionUser(supabase)
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: projects, error } = await supabase
+    .from('projects')
+    .select('id, name, belong_year, value, settlement_stages')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  if (!projects || projects.length === 0) return []
+
+  const projectIds = projects.map((p: any) => p.id)
+  const { data: settlements } = await supabase
+    .from('settlement_stages' as any)
+    .select('project_id, paid')
+    .in('project_id', projectIds)
+
+  const paidByProject = new Map<string, number>()
+  ;(settlements || []).forEach((s: any) => {
+    paidByProject.set(s.project_id, (paidByProject.get(s.project_id) || 0) + (s.paid ? 1 : 0))
+  })
+
+  return projects.map((p: any) => {
+    const total = p.settlement_stages || 1
+    const paid = paidByProject.get(p.id) || 0
+    return { id: p.id, name: p.name, belong_year: p.belong_year, value: p.value, settlement_summary: { paid, total } }
   })
 }
 
@@ -223,14 +296,10 @@ export async function createProject(project: ProjectInsert): Promise<Project> {
 export async function updateProject(id: string, project: Partial<Project>): Promise<Project> {
   const supabase = await createClient()
 
-  console.log('Supabase updateProject - 输入数据:', { id, project })
-
   // 添加重试机制
   let lastError = null
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      console.log(`Supabase updateProject - 尝试 ${attempt}/3`)
-
       // 先执行更新，不返回数据
       const { error: updateError } = await supabase
         .from('projects')
@@ -264,7 +333,6 @@ export async function updateProject(id: string, project: Partial<Project>): Prom
         throw selectError
       }
 
-      console.log('Supabase updateProject - 成功！最终结果:', data)
       return data
     } catch (error: any) {
       lastError = error
@@ -276,7 +344,6 @@ export async function updateProject(id: string, project: Partial<Project>): Prom
       }
 
       // 等待一段时间后重试
-      console.log(`Supabase updateProject - 等待 ${attempt * 500}ms 后重试...`)
       await new Promise(resolve => setTimeout(resolve, attempt * 500))
     }
   }
@@ -294,11 +361,25 @@ export async function deleteProject(id: string): Promise<void> {
   if (error) throw error
 }
 
+// 清理 14 天前已完成的任务（仅当前用户）
+export async function cleanupOldCompletedTasks(): Promise<void> {
+  const supabase = await createClient()
+  const user = await getSessionUser(supabase)
+  if (!user) return
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+  await supabase
+    .from('tasks')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('status', 'completed')
+    .lt('completed_at', fourteenDaysAgo)
+}
+
 // 任务相关查询
 export async function getTasks(options?: { mode?: 'mine' | 'shared' }): Promise<any[]> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
   if (!user) throw new Error('Not authenticated')
 
   if (options?.mode === 'shared') {
@@ -404,16 +485,10 @@ export async function getUpcomingTasks(supabase?: any, hours: number = 24): Prom
   const client = supabase || await createClient()
   const now = new Date()
 
-  const { data: { user } } = await client.auth.getUser()
+  const user = await getSessionUser(client)
   if (!user) return { overdue: [], upcoming: [], thisWeek: [] }
 
-  const { data: member } = await client
-    .from('team_members' as any)
-    .select('data_scope')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .single()
-  const dataScope = (member as any)?.data_scope ?? 'own'
+  const dataScope = await getDataScope(client, user.id)
 
   const baseQuery = () => {
     let q = client.from('tasks').select('*, projects(*, customers(*))')
@@ -503,7 +578,7 @@ export async function deleteTask(id: string): Promise<void> {
 // 用户设置相关查询
 export async function getUserSettings(): Promise<UserSettings | null> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser(supabase)
 
   if (!user) return null
 
@@ -608,16 +683,10 @@ export async function getDashboardStats(supabase?: any) {
   tomorrowStart.setDate(tomorrowStart.getDate() + 1)
 
   // 并行执行项目查询和任务查询（优化：减少数据库往返）
-  const { data: { user } } = await client.auth.getUser()
+  const user = await getSessionUser(client)
   if (!user) throw new Error('Not authenticated')
 
-  const { data: member } = await client
-    .from('team_members' as any)
-    .select('data_scope')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .single()
-  const dataScope = (member as any)?.data_scope ?? 'own'
+  const dataScope = await getDataScope(client, user.id)
 
   let projectQuery = client
     .from('projects')
@@ -638,6 +707,16 @@ export async function getDashboardStats(supabase?: any) {
   const allProjects = projectsResult.data
   const allTasks = tasksResult.data || []
 
+  // settlements 查询与后续计算并行启动
+  const projectIds = allProjects?.map(p => p.id) || []
+  const settlementsPromise = projectIds.length > 0
+    ? client.from('settlement_stages' as any)
+        .select('project_id, amount, accepted, invoiced, paid, accepted_date, invoiced_date, paid_date')
+        .in('project_id', projectIds)
+    : Promise.resolve({ data: [] })
+
+  const { data: allSettlements } = await settlementsPromise as { data: Array<{ project_id: string; amount: number | null; accepted: boolean; invoiced: boolean; paid: boolean; accepted_date: string | null; invoiced_date: string | null; paid_date: string | null }> | null }
+
   // 计算项目统计数据
   const totalProjects = allProjects?.length || 0
   const activeProjects = allProjects?.filter(p => p.status === 'active').length || 0
@@ -645,13 +724,6 @@ export async function getDashboardStats(supabase?: any) {
   const expectedValue = allProjects?.reduce((sum, p) => sum + ((p.value || 0) * (p.probability || 0) / 100), 0) || 0
   const signedWithStart = allProjects?.filter(p => p.has_start_notice || p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0) || 0
   const signedWithContract = allProjects?.filter(p => p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0) || 0
-
-  // 获取结算阶段数据（需要 projectIds，所以放在后面）
-  const projectIds = allProjects?.map(p => p.id) || []
-  const { data: allSettlements } = await client
-    .from('settlement_stages' as any)
-    .select('project_id, amount, accepted, invoiced, paid, accepted_date, invoiced_date, paid_date')
-    .in('project_id', projectIds) as { data: Array<{ project_id: string; amount: number | null; accepted: boolean; invoiced: boolean; paid: boolean; accepted_date: string | null; invoiced_date: string | null; paid_date: string | null }> | null }
 
   // 计算已验收、已开票、已回款金额
   let acceptedAmount = 0
@@ -763,6 +835,181 @@ export async function getDashboardStats(supabase?: any) {
   }
 }
 
+export async function getProjectsForDashboard(): Promise<any[]> {
+  const supabase = await createClient()
+  const user = await getSessionUser(supabase)
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: projects, error } = await supabase
+    .from('projects')
+    .select('id, name, value, expected_close_date, contract_signed, customers(name)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  if (!projects || projects.length === 0) return []
+
+  const projectIds = projects.map((p: any) => p.id)
+  const { data: settlements } = await supabase
+    .from('settlement_stages' as any)
+    .select('project_id, planned_accepted_date, accepted, planned_invoiced_date, invoiced, planned_paid_date, paid')
+    .in('project_id', projectIds)
+
+  const settlementsByProject = new Map<string, any[]>()
+  projectIds.forEach((id: string) => settlementsByProject.set(id, []))
+  ;(settlements || []).forEach((s: any) => {
+    settlementsByProject.get(s.project_id)?.push(s)
+  })
+
+  return projects.map((p: any) => ({
+    ...p,
+    _settlements: settlementsByProject.get(p.id) || [],
+  }))
+}
+
+// 仪表板数据：合并 stats + 项目列表，共用 projects/settlement_stages 查询
+export async function getDashboardData() {
+  const client = await createClient()
+  const user = await getSessionUser(client)
+  if (!user) throw new Error('Not authenticated')
+
+  const currentYear = new Date().getFullYear()
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowStart = new Date(tomorrow)
+
+  const weekEnd = new Date(today)
+  const dayOfWeek = weekEnd.getDay()
+  weekEnd.setDate(weekEnd.getDate() + (dayOfWeek === 0 ? 0 : 7 - dayOfWeek))
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const projectsQuery = client
+    .from('projects')
+    .select('id, name, status, value, probability, has_start_notice, contract_signed, created_at, signed_at, expected_close_date, belong_year, customers(name)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const tasksQuery = client
+    .from('tasks')
+    .select('id, due_date, status')
+    .eq('user_id', user.id)
+
+  const [projectsResult, tasksResult] = await Promise.all([projectsQuery, tasksQuery])
+  const allProjects: any[] = projectsResult.data || []
+  const allTasks: any[] = tasksResult.data || []
+
+  const projectIds = allProjects.map(p => p.id)
+  const settlementsResult = projectIds.length > 0
+    ? await client.from('settlement_stages' as any)
+        .select('project_id, amount, accepted, invoiced, paid, accepted_date, invoiced_date, paid_date, planned_accepted_date, planned_invoiced_date, planned_paid_date')
+        .in('project_id', projectIds)
+    : { data: [] as any[] }
+  const allSettlements: any[] = settlementsResult.data || []
+
+  // ----- 当年项目用于 stats -----
+  const yearProjects = allProjects.filter(p => p.belong_year === currentYear)
+  const yearProjectIds = new Set(yearProjects.map(p => p.id))
+  const yearSettlements = allSettlements.filter(s => yearProjectIds.has(s.project_id))
+
+  const totalProjects = yearProjects.length
+  const activeProjects = yearProjects.filter(p => p.status === 'active').length
+  const totalValue = yearProjects.reduce((sum, p) => sum + (p.value || 0), 0)
+  const expectedValue = yearProjects.reduce((sum, p) => sum + ((p.value || 0) * (p.probability || 0) / 100), 0)
+  const signedWithStart = yearProjects.filter(p => p.has_start_notice || p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0)
+  const signedWithContract = yearProjects.filter(p => p.contract_signed).reduce((sum, p) => sum + (p.value || 0), 0)
+
+  // 已验收/开票/回款（按 settlement 比例分摊到 project.value）
+  let acceptedAmount = 0, invoicedAmount = 0, paidAmount = 0
+  const settlementsByYearProject = new Map<string, any[]>()
+  yearSettlements.forEach(s => {
+    if (!settlementsByYearProject.has(s.project_id)) settlementsByYearProject.set(s.project_id, [])
+    settlementsByYearProject.get(s.project_id)!.push(s)
+  })
+  settlementsByYearProject.forEach((stages, projectId) => {
+    const project = yearProjects.find(p => p.id === projectId)
+    if (!project || !project.value) {
+      stages.forEach(s => {
+        if (s.accepted) acceptedAmount += (s.amount || 0)
+        if (s.invoiced) invoicedAmount += (s.amount || 0)
+        if (s.paid) paidAmount += (s.amount || 0)
+      })
+    } else {
+      const totalStageAmount = stages.reduce((sum, s) => sum + (s.amount || 0), 0)
+      if (totalStageAmount > 0) {
+        const accAmt = stages.filter(s => s.accepted).reduce((sum, s) => sum + (s.amount || 0), 0)
+        const invAmt = stages.filter(s => s.invoiced).reduce((sum, s) => sum + (s.amount || 0), 0)
+        const pdAmt = stages.filter(s => s.paid).reduce((sum, s) => sum + (s.amount || 0), 0)
+        acceptedAmount += (accAmt / totalStageAmount) * project.value
+        invoicedAmount += (invAmt / totalStageAmount) * project.value
+        paidAmount += (pdAmt / totalStageAmount) * project.value
+      } else {
+        const totalStages = stages.length
+        if (totalStages > 0) {
+          const acc = stages.filter(s => s.accepted).length
+          const inv = stages.filter(s => s.invoiced).length
+          const pd = stages.filter(s => s.paid).length
+          acceptedAmount += (acc / totalStages) * project.value
+          invoicedAmount += (inv / totalStages) * project.value
+          paidAmount += (pd / totalStages) * project.value
+        }
+      }
+    }
+  })
+
+  const isThisMonth = (dateStr: string | null) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    return d >= monthStart && d < monthEnd
+  }
+  const monthlyTotalValue = yearProjects.filter(p => isThisMonth(p.created_at)).reduce((sum, p) => sum + (p.value || 0), 0)
+  const monthlyExpectedValue = yearProjects.filter(p => isThisMonth(p.created_at)).reduce((sum, p) => sum + ((p.value || 0) * (p.probability || 0) / 100), 0)
+  const monthlySigned = yearProjects.filter(p => p.signed_at && isThisMonth(p.signed_at)).reduce((sum, p) => sum + (p.value || 0), 0)
+
+  let monthlyAccepted = 0, monthlyInvoiced = 0, monthlyPaid = 0
+  yearSettlements.forEach(s => {
+    const stageAmt = s.amount || 0
+    if (isThisMonth(s.accepted_date)) monthlyAccepted += stageAmt
+    if (isThisMonth(s.invoiced_date)) monthlyInvoiced += stageAmt
+    if (isThisMonth(s.paid_date)) monthlyPaid += stageAmt
+  })
+
+  const todayTasks = allTasks.filter(t => {
+    if (!t.due_date || t.status === 'completed') return false
+    const d = new Date(t.due_date)
+    return d >= today && d < tomorrow
+  }).length
+  const weekTasks = allTasks.filter(t => {
+    if (!t.due_date || t.status === 'completed') return false
+    const d = new Date(t.due_date)
+    return d < today || (d >= tomorrowStart && d <= weekEnd)
+  }).length
+
+  const stats = {
+    totalProjects, activeProjects, totalValue, expectedValue,
+    signedWithStart, signedWithContract,
+    acceptedAmount, invoicedAmount, paidAmount,
+    todayTasks, weekTasks,
+    monthlyTotalValue, monthlyExpectedValue, monthlySigned,
+    monthlyAccepted, monthlyInvoiced, monthlyPaid,
+  }
+
+  // ----- projects 列表（用于侧栏关注节点 + 通知铃，跨年）-----
+  const settlementsByProject = new Map<string, any[]>()
+  allProjects.forEach(p => settlementsByProject.set(p.id, []))
+  allSettlements.forEach(s => settlementsByProject.get(s.project_id)?.push(s))
+  const projects = allProjects.map(p => ({
+    ...p,
+    _settlements: settlementsByProject.get(p.id) || [],
+  }))
+
+  return { stats, projects }
+}
+
 // 结算段相关查询
 export async function getSettlementStages(projectId: string): Promise<SettlementStage[]> {
   const supabase = await createClient()
@@ -774,33 +1021,6 @@ export async function getSettlementStages(projectId: string): Promise<Settlement
 
   if (error) throw error
   return data || []
-}
-
-// 批量获取结算阶段（解决 N+1 查询问题）
-export async function getSettlementStagesBatch(projectIds: string[]): Promise<Map<string, SettlementStage[]>> {
-  if (projectIds.length === 0) {
-    return new Map()
-  }
-
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('settlement_stages' as any)
-    .select('*')
-    .in('project_id', projectIds)
-    .order('stage_number', { ascending: true })
-
-  if (error) throw error
-
-  const map = new Map<string, SettlementStage[]>()
-  projectIds.forEach(id => map.set(id, []))
-  ;(data as any[])?.forEach((stage: any) => {
-    const stages = map.get(stage.project_id)
-    if (stages) {
-      stages.push(stage)
-    }
-  })
-
-  return map
 }
 
 export async function createSettlementStage(stage: SettlementStageInsert): Promise<SettlementStage> {
@@ -850,6 +1070,62 @@ export async function getWeeklyUpdates(): Promise<any[]> {
 
   if (error) throw error
   return data || []
+}
+
+// 进展页数据：合并 projects（含客户、结算段统计） + weekly_updates，共用 auth
+export async function getUpdatesData(): Promise<{ projects: any[]; updates: any[] }> {
+  const supabase = await createClient()
+  const user = await getSessionUser(supabase)
+  if (!user) throw new Error('Not authenticated')
+
+  const [projectsResult, updatesResult] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('*, customers(*)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('weekly_updates')
+      .select('id, project_id, week, content, created_at, updated_at')
+      .order('week', { ascending: false })
+      .order('created_at', { ascending: false }),
+  ])
+
+  if (projectsResult.error) throw projectsResult.error
+  if (updatesResult.error) throw updatesResult.error
+
+  const projects = projectsResult.data || []
+  const updates = updatesResult.data || []
+  if (projects.length === 0) return { projects: [], updates }
+
+  const projectIds = projects.map((p: any) => p.id)
+  const { data: settlements, error: settlementsError } = (await supabase
+    .from('settlement_stages' as any)
+    .select('*')
+    .in('project_id', projectIds)) as { data: any[] | null; error: any }
+  if (settlementsError) throw settlementsError
+
+  const settlementsByProject = new Map<string, any[]>()
+  projectIds.forEach((id: string) => settlementsByProject.set(id, []))
+  ;(settlements || []).forEach((s: any) => settlementsByProject.get(s.project_id)?.push(s))
+
+  const enrichedProjects = projects.map((project: any) => {
+    const ps = settlementsByProject.get(project.id) || []
+    const actualStagesCount = ps.length > 0 ? ps.length : 1
+    return {
+      ...project,
+      settlement_stages: actualStagesCount,
+      settlement_summary: {
+        total: actualStagesCount,
+        accepted: ps.filter((s: any) => s.accepted).length,
+        invoiced: ps.filter((s: any) => s.invoiced).length,
+        paid: ps.filter((s: any) => s.paid).length,
+      },
+      _settlements: ps,
+    }
+  })
+
+  return { projects: enrichedProjects, updates }
 }
 
 export async function getProjectWeeklyUpdates(projectId: string): Promise<any[]> {

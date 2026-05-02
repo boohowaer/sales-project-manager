@@ -80,11 +80,11 @@ export function InviteUserDialog({ open, onClose, onSuccess }: {
         )}
         <DialogFooter className="gap-2.5 pt-2">
           {!inviteLink && (
-            <Button onClick={handleSubmit} disabled={loading || !email} className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800">
+            <Button onClick={handleSubmit} disabled={loading || !email}>
               {loading ? '生成中...' : '生成邀请链接'}
             </Button>
           )}
-          <Button variant="outline" onClick={handleClose} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">关闭</Button>
+          <Button variant="cancel" onClick={handleClose}>关闭</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

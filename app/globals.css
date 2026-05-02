@@ -93,45 +93,6 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* 原生表单元素的统一样式覆盖 */
-/* Checkbox 选中效果 - 使用 zinc-900 替代浏览器默认蓝色 */
-input[type="checkbox"] {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  background-color: white !important;
-  border: 2px solid #d4d4d4 !important;
-  border-radius: 4px !important;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s ease;
-  width: 20px !important;
-  height: 20px !important;
-}
-
-input[type="checkbox"]:checked {
-  background-color: #090702 !important;
-  border-color: #090702 !important;
-}
-
-input[type="checkbox"]:checked::after {
-  content: '' !important;
-  position: absolute !important;
-  left: 5px !important;
-  top: 2px !important;
-  width: 6px !important;
-  height: 10px !important;
-  border: solid white !important;
-  border-width: 0 2px 2px 0 !important;
-  transform: rotate(45deg) !important;
-}
-
-input[type="checkbox"]:hover {
-  border-color: #a1a1aa !important;
-}
-
-input[type="checkbox"]:focus {
-  outline: none !important;
-  box-shadow: 0 0 0 2px rgba(9, 7, 2, 0.2) !important;
-}
 
 /* Range slider 轨道和滑块 - 使用 zinc 色调 */
 input[type="range"] {
@@ -207,4 +168,17 @@ input[type="range"]::-moz-range-thumb:hover {
 
 input[type="range"]:focus {
   outline: none;
+}
+
+/* react-hot-toast 全局样式：让 icon + 文字作为一组在 toast 中居中 */
+.app-toast {
+  justify-content: center !important;
+}
+.app-toast > :first-child {
+  margin: 0 !important;
+}
+.app-toast > :last-child {
+  flex: 0 1 auto !important;
+  margin: 0 0 0 10px !important;
+  justify-content: flex-start !important;
 }

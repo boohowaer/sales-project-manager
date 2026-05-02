@@ -5,6 +5,8 @@ import { LogoutButton } from '@/components/auth/LogoutButton'
 import { MobileSidebar } from '@/components/layout/MobileSidebar'
 import { TasksProviderWrapper } from '@/components/layout/TasksProvider'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
+import { UserProvider } from '@/context/UserContext'
+import { DictionaryProvider } from '@/context/DictionaryContext'
 
 export default async function DashboardLayout({
   children,
@@ -64,13 +66,17 @@ export default async function DashboardLayout({
       {/* 移动端抽屉式侧边栏 */}
       <MobileSidebar navigation={navigation} />
 
-      <TasksProviderWrapper>
-          <div className="md:pl-64">
-            <main className="min-h-screen">
-              {children}
-            </main>
-          </div>
-        </TasksProviderWrapper>
+      <UserProvider user={ctx}>
+        <DictionaryProvider>
+          <TasksProviderWrapper>
+            <div className="md:pl-64">
+              <main className="min-h-screen">
+                {children}
+              </main>
+            </div>
+          </TasksProviderWrapper>
+        </DictionaryProvider>
+      </UserProvider>
     </div>
   )
 }

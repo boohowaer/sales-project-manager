@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { getDashboardStats, getProjects, getUserSettings, getSettlementStagesBatch } from '@/lib/supabase/queries'
+import { getDashboardData } from '@/lib/supabase/queries'
+import { readPageCache, writePageCache } from '@/lib/page-cache'
+import { PageLoading } from '@/components/ui/page-loading'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle, Clock, AlertCircle, TrendingUp, FileCheck, Receipt, DollarSign, ArrowRight, Info, FolderKanban, CheckSquare, FileEdit, Bell, X } from 'lucide-react'
+import { CheckCircle, Clock, AlertCircle, TrendingUp, FileCheck, Receipt, DollarSign, ArrowRight, Info, FolderKanban, CheckSquare, FileEdit, Bell, X, ClipboardCheck, UserCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useTasks } from '@/context/TasksContext'
 import Link from 'next/link'
@@ -32,20 +34,20 @@ function CircularProgress({ pct }: { pct: number }) {
   )
 }
 
+const EMPTY_GROUPS = { toSign: [] as any[], toAccept: [] as any[], toInvoice: [] as any[], toPayment: [] as any[] }
+
+type DashboardCache = { stats: any; projects: any[] }
+
 export default function DashboardPage() {
   const router = useRouter()
+  // 缓存读取放到 useEffect 中执行，避免 SSR/CSR 初始 state 不一致引发 hydration mismatch
   const [stats, setStats] = useState<any>(null)
-  const [userSettings, setUserSettings] = useState<any>(null)
-  const [monthlyProjects, setMonthlyProjects] = useState<{
-    toSign: any[], toAccept: any[], toInvoice: any[], toPayment: any[]
-  }>({ toSign: [], toAccept: [], toInvoice: [], toPayment: [] })
-  const [notifProjects, setNotifProjects] = useState<{
-    toSign: any[], toAccept: any[], toInvoice: any[], toPayment: any[]
-  }>({ toSign: [], toAccept: [], toInvoice: [], toPayment: [] })
+  const [projectsData, setProjectsData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const hadCacheRef = useRef(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
-  const { overdueTasks, upcomingTasks, thisWeekTasks } = useTasks()
+  const { overdueTasks, upcomingTasks, thisWeekTasks, pendingApprovals, myPendingApprovals, pendingMembers, userSettings, loading: tasksLoading } = useTasks()
   const upcomingTaskIds = new Set(upcomingTasks.map((t: any) => t.id))
 
   useEffect(() => {
@@ -56,120 +58,87 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [notifOpen])
 
-  useEffect(() => { loadData() }, [])
+  const loadDataRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    loadDataRef.current = loadData
+  })
+
+  useEffect(() => {
+    // 客户端读缓存：有则立即填充以避免骨架屏闪烁
+    const cached = readPageCache<DashboardCache>('dashboard')
+    if (cached) {
+      hadCacheRef.current = true
+      setStats(cached.stats)
+      setProjectsData(cached.projects)
+      setLoading(false)
+    }
+    loadData()
+  }, [])
+
+  useEffect(() => {
+    const handler = () => loadDataRef.current()
+    window.addEventListener('refresh-bell', handler)
+    return () => window.removeEventListener('refresh-bell', handler)
+  }, [])
 
   const loadData = async () => {
     try {
-      const [statsData, projectsData, settingsData] = await Promise.all([
-        getDashboardStats(), getProjects(), getUserSettings(),
-      ])
-      setStats(statsData)
-      setUserSettings(settingsData)
-
-      const now = new Date()
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-      const future30 = new Date(today)
-      future30.setDate(future30.getDate() + 30)
-      future30.setHours(23, 59, 59)
-
-      const notifDays = settingsData?.milestone_reminder_days ?? 7
-      const futureNotif = new Date(today)
-      futureNotif.setDate(futureNotif.getDate() + notifDays)
-      futureNotif.setHours(23, 59, 59)
-
-      const projectIds = projectsData.map((p: any) => p.id)
-      const settlementsMap = await getSettlementStagesBatch(projectIds)
-
-      const buildProjectGroups = (cutoff: Date) => {
-        const toSign = projectsData.filter((p: any) => {
-          if (!p.expected_close_date || p.contract_signed || p.has_start_notice) return false
-          return new Date(p.expected_close_date) <= cutoff
-        })
-        const toAccept: any[] = [], toInvoice: any[] = [], toPayment: any[] = []
-        projectsData.forEach((p: any) => {
-          const stages = settlementsMap.get(p.id) || []
-          const acc = stages.filter((s: any) => !s.accepted && s.planned_accepted_date && new Date(s.planned_accepted_date) <= cutoff)
-          if (acc.length > 0) toAccept.push({ ...p, pendingStages: acc })
-          const inv = stages.filter((s: any) => !s.invoiced && s.planned_invoiced_date && new Date(s.planned_invoiced_date) <= cutoff)
-          if (inv.length > 0) toInvoice.push({ ...p, pendingStages: inv })
-          const pay = stages.filter((s: any) => !s.paid && s.planned_paid_date && new Date(s.planned_paid_date) <= cutoff)
-          if (pay.length > 0) toPayment.push({ ...p, pendingStages: pay })
-        })
-        return { toSign, toAccept, toInvoice, toPayment }
-      }
-
-      setMonthlyProjects(buildProjectGroups(future30))
-      const notifResult = buildProjectGroups(futureNotif)
-      setNotifProjects(notifResult)
-
-      // 节点提醒写 inbox（每日去重）
-      const _d = new Date()
-      const milestoneKey = `inbox_milestone_written_${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`
-      const writtenMilestones = new Set<string>(
-        JSON.parse(localStorage.getItem(milestoneKey) ?? '[]')
-      )
-      const milestoneWrites: Array<{ type: string; title: string; body: string; linkId: string }> = []
-      const newMilestoneIds: string[] = []
-
-      notifResult.toSign.forEach((p: any) => {
-        const sid = `sign_${p.id}`
-        if (!writtenMilestones.has(sid)) {
-          const dateStr = p.expected_close_date
-            ? new Date(p.expected_close_date).toLocaleDateString('zh-CN') : ''
-          milestoneWrites.push({ type: 'milestone', title: '签约提醒', body: `项目「${p.name}」计划 ${dateStr} 签约`, linkId: p.id })
-          newMilestoneIds.push(sid)
-        }
-      })
-      notifResult.toAccept.forEach((p: any) => {
-        const sid = `accept_${p.id}`
-        if (!writtenMilestones.has(sid)) {
-          const dateStr = p.pendingStages[0]?.planned_accepted_date
-            ? new Date(p.pendingStages[0].planned_accepted_date).toLocaleDateString('zh-CN') : ''
-          milestoneWrites.push({ type: 'milestone', title: '验收提醒', body: `项目「${p.name}」计划 ${dateStr} 验收`, linkId: p.id })
-          newMilestoneIds.push(sid)
-        }
-      })
-      notifResult.toInvoice.forEach((p: any) => {
-        const sid = `invoice_${p.id}`
-        if (!writtenMilestones.has(sid)) {
-          const dateStr = p.pendingStages[0]?.planned_invoiced_date
-            ? new Date(p.pendingStages[0].planned_invoiced_date).toLocaleDateString('zh-CN') : ''
-          milestoneWrites.push({ type: 'milestone', title: '开票提醒', body: `项目「${p.name}」计划 ${dateStr} 开票`, linkId: p.id })
-          newMilestoneIds.push(sid)
-        }
-      })
-      notifResult.toPayment.forEach((p: any) => {
-        const sid = `payment_${p.id}`
-        if (!writtenMilestones.has(sid)) {
-          const dateStr = p.pendingStages[0]?.planned_paid_date
-            ? new Date(p.pendingStages[0].planned_paid_date).toLocaleDateString('zh-CN') : ''
-          milestoneWrites.push({ type: 'milestone', title: '回款提醒', body: `项目「${p.name}」计划 ${dateStr} 回款`, linkId: p.id })
-          newMilestoneIds.push(sid)
-        }
-      })
-
-      if (milestoneWrites.length > 0) {
-        // 先标记，防止并发重复写入
-        const updated = new Set([...writtenMilestones, ...newMilestoneIds])
-        localStorage.setItem(milestoneKey, JSON.stringify([...updated]))
-
-        Promise.all(
-          milestoneWrites.map(n =>
-            fetch('/api/inbox', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: n.type, title: n.title, body: n.body, linkType: 'project', linkId: n.linkId }),
-            })
-          )
-        ).catch(() => {})
-      }
+      const data = await getDashboardData()
+      setStats(data.stats)
+      setProjectsData(data.projects)
+      writePageCache('dashboard', { stats: data.stats, projects: data.projects })
     } catch (error: any) {
-      toast.error('加载数据失败')
+      // 仅在没有缓存可显示时才提示加载失败
+      if (!hadCacheRef.current) toast.error('加载数据失败')
     } finally {
       setLoading(false)
     }
   }
+
+  const buildProjectGroups = (projects: any[], cutoff: Date) => {
+    const toSign = projects.filter((p: any) => {
+      if (!p.expected_close_date || p.contract_signed) return false
+      return new Date(p.expected_close_date) <= cutoff
+    })
+    const toAccept: any[] = [], toInvoice: any[] = [], toPayment: any[] = []
+    projects.forEach((p: any) => {
+      const stages = p._settlements || []
+      const acc = stages.filter((s: any) => !s.accepted && s.planned_accepted_date && new Date(s.planned_accepted_date) <= cutoff)
+      if (acc.length > 0) toAccept.push({ ...p, pendingStages: acc })
+      const inv = stages.filter((s: any) => !s.invoiced && s.planned_invoiced_date && new Date(s.planned_invoiced_date) <= cutoff)
+      if (inv.length > 0) toInvoice.push({ ...p, pendingStages: inv })
+      const pay = stages.filter((s: any) => !s.paid && s.planned_paid_date && new Date(s.planned_paid_date) <= cutoff)
+      if (pay.length > 0) toPayment.push({ ...p, pendingStages: pay })
+    })
+    return {
+      toSign: toSign.sort((a: any, b: any) => new Date(a.expected_close_date).getTime() - new Date(b.expected_close_date).getTime()),
+      toAccept: toAccept.sort((a: any, b: any) => new Date(a.pendingStages[0].planned_accepted_date).getTime() - new Date(b.pendingStages[0].planned_accepted_date).getTime()),
+      toInvoice: toInvoice.sort((a: any, b: any) => new Date(a.pendingStages[0].planned_invoiced_date).getTime() - new Date(b.pendingStages[0].planned_invoiced_date).getTime()),
+      toPayment: toPayment.sort((a: any, b: any) => new Date(a.pendingStages[0].planned_paid_date).getTime() - new Date(b.pendingStages[0].planned_paid_date).getTime()),
+    }
+  }
+
+  const monthlyProjects = useMemo(() => {
+    if (projectsData.length === 0) return EMPTY_GROUPS
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const future30 = new Date(today)
+    future30.setDate(future30.getDate() + 30)
+    future30.setHours(23, 59, 59)
+    return buildProjectGroups(projectsData, future30)
+  }, [projectsData])
+
+  const notifProjects = useMemo(() => {
+    if (projectsData.length === 0) return EMPTY_GROUPS
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const notifDays = userSettings?.milestone_reminder_days ?? 7
+    const futureNotif = new Date(today)
+    futureNotif.setDate(futureNotif.getDate() + notifDays)
+    futureNotif.setHours(23, 59, 59)
+    return buildProjectGroups(projectsData, futureNotif)
+  }, [projectsData, userSettings])
 
   const salesGoal = userSettings?.sales_goal || 0
   const pct = (val: number) => salesGoal > 0 ? Math.min(100, Math.round((val / salesGoal) * 100)) : null
@@ -190,8 +159,9 @@ export default function DashboardPage() {
   const monthName = `${now.getMonth() + 1}月`
   const pendingThisWeek = overdueTasks.length + thisWeekTasks.length
 
-  if (loading || !stats) {
-    return <div className="p-8"><div className="text-center py-20 text-zinc-400 text-sm">加载中...</div></div>
+  // 等 stats 与 tasks 数据都到位后再退出骨架，避免圆形进度环和本周任务卡片晚于其他元素出现
+  if (loading || !stats || tasksLoading) {
+    return <PageLoading variant="grid" />
   }
 
   const metrics = [
@@ -205,14 +175,14 @@ export default function DashboardPage() {
 
   return (
     <div className="p-8 max-w-[1600px]">
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">仪表板</h1>
           <p className="mt-1.5 text-sm text-zinc-500">
             {now.getFullYear()}年 · {salesGoal > 0 ? `年度目标 ¥${salesGoal.toLocaleString()}` : '未设置年度目标'}
           </p>
         </div>
-        <div className="flex items-center gap-1 mt-1">
+        <div className="flex items-center gap-1 -translate-y-1">
           <button
             onClick={() => handleQuickAction('createProject')}
             title="创建项目"
@@ -241,26 +211,85 @@ export default function DashboardPage() {
               className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-zinc-900 transition-colors group"
             >
               <Bell className="w-5 h-5 text-zinc-600 group-hover:text-white" />
-              {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length) > 0 && (
+              {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length + pendingApprovals.length + myPendingApprovals.length + pendingMembers.length) > 0 && (
                 <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
               )}
             </button>
             {notifOpen && (
               <div className="absolute right-0 top-full mt-2 w-80 max-h-[480px] overflow-y-auto bg-white rounded-2xl shadow-xl border-0 z-50">
-                <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
-                  <h3 className="font-semibold text-zinc-900">任务提醒</h3>
-                  <button onClick={() => setNotifOpen(false)} className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-zinc-100 transition-colors">
-                    <X className="w-4 h-4 text-zinc-400" />
-                  </button>
-                </div>
-                <div className="p-2">
-                  {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length) === 0 ? (
+                <div className="p-2 pt-6">
+                  {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length + pendingApprovals.length + myPendingApprovals.length + pendingMembers.length) === 0 ? (
                     <div className="p-6 text-center">
                       <CheckCircle className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
                       <p className="text-sm text-zinc-500">暂无待处理提醒</p>
                     </div>
                   ) : (
                     <>
+                      {/* 待我审批 */}
+                      {pendingApprovals.length > 0 && (
+                        <div className="mb-2">
+                          <div className="flex items-center gap-1.5 px-3 py-2">
+                            <ClipboardCheck className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="text-xs font-medium text-blue-600">待我审批</span>
+                            <span className="text-xs text-zinc-400">({pendingApprovals.length})</span>
+                          </div>
+                          {pendingApprovals.map((req: any) => (
+                            <Link key={req.id} href="/dashboard/approvals" onClick={() => setNotifOpen(false)}>
+                              <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-blue-50 transition-colors cursor-pointer">
+                                <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-zinc-900 truncate">{{ create_customer: '新建客户', create_project: '新建项目', update_project: '修改项目' }[req.type as string] ?? req.type}</p>
+                                  <p className="text-xs text-zinc-500 mt-0.5 truncate">{req.payload?.name ?? ''}</p>
+                                  <p className="text-xs text-blue-500 mt-1">等待你审批</p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      {/* 我提交的审批流程中 */}
+                      {myPendingApprovals.length > 0 && (
+                        <div className="mb-2">
+                          <div className="flex items-center gap-1.5 px-3 py-2">
+                            <ClipboardCheck className="w-3.5 h-3.5 text-zinc-400" />
+                            <span className="text-xs font-medium text-zinc-500">我提交的审批</span>
+                            <span className="text-xs text-zinc-400">({myPendingApprovals.length})</span>
+                          </div>
+                          {myPendingApprovals.map((req: any) => (
+                            <Link key={req.id} href="/dashboard/approvals" onClick={() => setNotifOpen(false)}>
+                              <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-50 transition-colors cursor-pointer">
+                                <div className="w-2 h-2 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-zinc-900 truncate">{{ create_customer: '新建客户', create_project: '新建项目', update_project: '修改项目' }[req.type as string] ?? req.type}</p>
+                                  <p className="text-xs text-zinc-500 mt-0.5 truncate">{req.payload?.name ?? ''}</p>
+                                  <p className="text-xs text-zinc-400 mt-1">等待 {{ 1: '销售经理', 2: '超级管理员' }[req.current_step as number] ?? `第${req.current_step}步`} 审批</p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      {/* 成员申请（仅 super_admin） */}
+                      {pendingMembers.length > 0 && (
+                        <div className="mb-2">
+                          <div className="flex items-center gap-1.5 px-3 py-2">
+                            <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                            <span className="text-xs font-medium text-emerald-600">成员申请</span>
+                            <span className="text-xs text-zinc-400">({pendingMembers.length})</span>
+                          </div>
+                          {pendingMembers.map((m: any) => (
+                            <Link key={m.id} href="/dashboard/admin/users" onClick={() => setNotifOpen(false)}>
+                              <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-emerald-50 transition-colors cursor-pointer">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-zinc-900 truncate">{m.email}</p>
+                                  <p className="text-xs text-emerald-600 mt-1">申请加入团队</p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
                       {(overdueTasks.length > 0 || upcomingTasks.length > 0) && (
                         <div className="mb-2">
                           {overdueTasks.length > 0 && (
@@ -413,7 +442,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         {metrics.map((m) => (
           <Card key={m.label} className="rounded-2xl border-0 bg-white shadow-sm overflow-visible">
-            <CardContent className="px-4 pt-4 !pb-0 flex items-center gap-4 overflow-visible min-h-[160px]">
+            <CardContent className="px-4 pt-4 !pb-0 flex items-center gap-1 overflow-visible min-h-[160px]">
               {m.pct !== null && (
                 <div className="shrink-0 -my-1">
                   <CircularProgress pct={m.pct} />
@@ -595,7 +624,7 @@ export default function DashboardPage() {
               {thisWeekTasks.length === 0 && overdueTasks.length === 0 ? (
                 <div className="px-5 py-10 text-center text-sm text-zinc-400">本周暂无待办任务</div>
               ) : (
-                <div className="divide-y divide-zinc-50 max-h-[460px] overflow-y-auto">
+                <div className="divide-y divide-zinc-50">
                   {overdueTasks.map((task: any) => (
                     <div key={task.id} className="flex items-start gap-3 px-5 py-3 hover:bg-zinc-50 transition-colors">
                       <AlertCircle className="w-3.5 h-3.5 text-rose-400 mt-0.5 shrink-0" />

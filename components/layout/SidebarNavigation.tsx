@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
 import {
   LayoutDashboard,
   Users,
@@ -14,7 +13,6 @@ import {
   UserCog,
   BookOpen,
   ClipboardCheck,
-  Inbox,
   LucideIcon
 } from 'lucide-react'
 
@@ -23,7 +21,6 @@ interface NavigationItem {
   href: string
   iconName: string
   showPendingBadge?: boolean
-  showInboxBadge?: boolean
 }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -36,16 +33,13 @@ const iconMap: Record<string, LucideIcon> = {
   UserCog,
   BookOpen,
   ClipboardCheck,
-  Inbox,
 }
 
 export function SidebarNavigation({ navigation }: { navigation: NavigationItem[] }) {
   const pathname = usePathname()
   const [pendingCount, setPendingCount] = useState(0)
-  const [inboxCount, setInboxCount] = useState(0)
 
   const hasPendingBadge = navigation.some(n => n.showPendingBadge)
-  const hasInboxBadge = navigation.some(n => n.showInboxBadge)
 
   useEffect(() => {
     if (!hasPendingBadge) return
@@ -59,40 +53,6 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
       .catch(() => {})
   }, [hasPendingBadge])
 
-  const fetchInboxCount = useCallback(() => {
-    if (!hasInboxBadge) return
-    fetch('/api/inbox?count=true')
-      .then(r => r.json())
-      .then((data: unknown) => {
-        if (data && typeof data === 'object' && 'unread' in data) {
-          setInboxCount((data as { unread: number }).unread)
-        }
-      })
-      .catch(() => {})
-  }, [hasInboxBadge])
-
-  useEffect(() => {
-    if (!hasInboxBadge) return
-    fetchInboxCount()
-
-    const supabase = createClient()
-    const channelName = `inbox-badge-${Math.random().toString(36).slice(2)}`
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'inbox_notifications',
-      }, () => {
-        fetchInboxCount()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [hasInboxBadge, fetchInboxCount])
-
   return (
     <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       {navigation.map((item) => {
@@ -100,7 +60,7 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
         if (!Icon) return null
 
         const isActive = pathname === item.href
-        const badge = item.showPendingBadge ? pendingCount : item.showInboxBadge ? inboxCount : 0
+        const badge = item.showPendingBadge ? pendingCount : 0
 
         return (
           <Link
@@ -127,3 +87,4 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
     </nav>
   )
 }
+

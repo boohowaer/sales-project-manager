@@ -11,6 +11,11 @@ export function createClient() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+    // 应用首次创建 client 时提前同步一次 session：让 token 刷新在第一次完成，
+    // 避免后续业务请求并发触发刷新引发 "Lock was released because another request stole it" 警告
+    if (typeof window !== 'undefined') {
+      client.auth.getSession().catch(() => {})
+    }
   }
   return client
 }

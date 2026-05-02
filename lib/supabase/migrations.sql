@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed')),
   priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
   due_date TIMESTAMP WITH TIME ZONE,
   completed_at TIMESTAMP WITH TIME ZONE,
@@ -164,3 +164,45 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION create_default_user_settings();
+
+-- ============================================================
+-- 迁移：任务状态简化（pending / completed）
+-- 执行前提：已有环境需手动执行以下语句
+-- ============================================================
+
+-- 1. 将 in_progress 和 cancelled 状态迁移为 pending
+-- UPDATE tasks SET status = 'pending' WHERE status IN ('in_progress', 'cancelled');
+
+-- 2. 删除旧约束并添加新约束
+-- ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
+-- ALTER TABLE tasks ADD CONSTRAINT tasks_status_check CHECK (status IN ('pending', 'completed'));
+
+-- ============================================================
+-- 数据字典扩展：支持模块分类、父子级联、字段元数据
+-- ============================================================
+
+-- ALTER TABLE data_dictionary ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES data_dictionary(id) ON DELETE SET NULL;
+-- ALTER TABLE data_dictionary ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
+-- ALTER TABLE data_dictionary ADD COLUMN IF NOT EXISTS module TEXT;
+-- ALTER TABLE data_dictionary ADD COLUMN IF NOT EXISTS field_key TEXT;
+-- ALTER TABLE data_dictionary ADD COLUMN IF NOT EXISTS display_name TEXT;
+
+-- CREATE TABLE IF NOT EXISTS dictionary_fields (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+--   field_key TEXT NOT NULL,
+--   module TEXT NOT NULL,
+--   display_name TEXT NOT NULL,
+--   supports_cascade BOOLEAN DEFAULT false,
+--   sort_order INTEGER DEFAULT 0,
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   UNIQUE (team_id, field_key)
+-- );
+-- ALTER TABLE dictionary_fields ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "team members can read dictionary_fields"
+--   ON dictionary_fields FOR SELECT
+--   USING (team_id IN (
+--     SELECT team_id FROM team_members WHERE user_id = auth.uid() AND status = 'active'
+--   ));
+
+-- 详细迁移步骤见: migrations/20260429_extend_data_dictionary.sql

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { DictionaryManager } from '@/components/admin/DictionaryManager'
+import { PageLoading } from '@/components/ui/page-loading'
 import type { DictionaryEntry } from '@/lib/supabase/admin-queries'
 
 export default function DictionaryPage() {
@@ -15,15 +16,7 @@ export default function DictionaryPage() {
 
   useEffect(() => { loadEntries() }, [loadEntries])
 
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-20">
-          <div className="text-zinc-400 text-sm">加载中...</div>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <PageLoading variant="two-column" />
 
   return (
     <div className="p-8">

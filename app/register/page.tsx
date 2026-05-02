@@ -123,7 +123,7 @@ export default function RegisterPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 pt-2">
-            <Button type="submit" className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '注册中...' : '注册'}
             </Button>
             <div className="text-sm text-center text-zinc-600">

@@ -168,16 +168,26 @@ export type DictionaryEntry = {
   sort_order: number
   is_active: boolean
   created_at: string
+  parent_id: string | null
+  level: number
+  module: string | null
+  field_key: string | null
+  display_name: string | null
 }
 
-export async function getDictionaryEntries(teamId: string, category?: string): Promise<DictionaryEntry[]> {
+export async function getDictionaryEntries(teamId: string, category?: string | string[], module?: string): Promise<DictionaryEntry[]> {
   const supabase = createAdminClient()
   let query = supabase
     .from('data_dictionary')
     .select('*')
     .eq('team_id', teamId)
     .order('sort_order', { ascending: true })
-  if (category) query = query.eq('category', category)
+  if (Array.isArray(category)) {
+    if (category.length > 0) query = query.in('category', category)
+  } else if (category) {
+    query = query.eq('category', category)
+  }
+  if (module) query = query.eq('module', module)
   const { data, error } = await query
   if (error) throw error
   return (data || []) as DictionaryEntry[]
@@ -198,10 +208,41 @@ export async function createDictionaryEntry(
 
 export async function updateDictionaryEntry(
   id: string,
-  updates: Partial<Pick<DictionaryEntry, 'label' | 'sort_order' | 'is_active'>>
+  updates: Partial<Pick<DictionaryEntry, 'key' | 'label' | 'sort_order' | 'is_active' | 'display_name' | 'parent_id' | 'level'>>
 ): Promise<void> {
   const supabase = createAdminClient()
   const { error } = await supabase.from('data_dictionary').update(updates).eq('id', id)
+  if (error) throw error
+}
+
+// 修改字典项的 key，并级联更新所有引用了旧 key 的业务数据
+export async function updateDictionaryKeyWithCascade(
+  teamId: string,
+  id: string,
+  oldKey: string,
+  newKey: string,
+  fieldKey: string
+): Promise<void> {
+  const supabase = createAdminClient()
+
+  const fieldColumnMap: Record<string, { table: string; column: string }> = {
+    company: { table: 'customers', column: 'company' },
+    customer_source: { table: 'projects', column: 'customer_source' },
+    industry: { table: 'projects', column: 'industry' },
+    project_status: { table: 'projects', column: 'status' },
+  }
+
+  const mapping = fieldColumnMap[fieldKey]
+  if (mapping) {
+    const { error: updateError } = await supabase
+      .from(mapping.table)
+      .update({ [mapping.column]: newKey })
+      .eq('team_id', teamId)
+      .eq(mapping.column, oldKey)
+    if (updateError) throw updateError
+  }
+
+  const { error } = await supabase.from('data_dictionary').update({ key: newKey }).eq('id', id)
   if (error) throw error
 }
 
@@ -209,4 +250,74 @@ export async function deleteDictionaryEntry(id: string): Promise<void> {
   const supabase = createAdminClient()
   const { error } = await supabase.from('data_dictionary').delete().eq('id', id)
   if (error) throw error
+}
+
+export async function batchUpdateDictionaryEntries(ids: string[], updates: Partial<Pick<DictionaryEntry, 'is_active' | 'sort_order'>>): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('data_dictionary').update(updates).in('id', ids)
+  if (error) throw error
+}
+
+export async function batchDeleteDictionaryEntries(ids: string[]): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('data_dictionary').delete().in('id', ids)
+  if (error) throw error
+}
+
+export async function reorderDictionaryEntries(items: { id: string; sort_order: number }[]): Promise<void> {
+  const supabase = createAdminClient()
+  for (const item of items) {
+    const { error } = await supabase.from('data_dictionary').update({ sort_order: item.sort_order }).eq('id', item.id)
+    if (error) throw error
+  }
+}
+
+export async function getDictionaryFieldConfigs(teamId: string): Promise<any[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('dictionary_fields')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function updateDictionaryFieldConfig(id: string, updates: { display_name?: string; sort_order?: number }): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('dictionary_fields').update(updates).eq('id', id)
+  if (error) throw error
+}
+
+// 检查字典选项被多少数据引用
+export async function checkDictionaryUsage(teamId: string, fieldKey: string, key: string): Promise<{ table: string; count: number }[]> {
+  const supabase = createAdminClient()
+  const results: { table: string; count: number }[] = []
+
+  // 检查各表中该字段的使用情况
+  const checks: { table: string; column: string }[] = [
+    { table: 'customers', column: 'company' },
+    { table: 'projects', column: 'customer_source' },
+    { table: 'projects', column: 'industry' },
+    { table: 'projects', column: 'status' },
+  ]
+
+  const fieldColumnMap: Record<string, string> = {
+    company: 'company',
+    customer_source: 'customer_source',
+    industry: 'industry',
+    project_status: 'status',
+  }
+
+  const column = fieldColumnMap[fieldKey]
+  if (!column) return results
+
+  const { count } = await supabase
+    .from(column === 'status' ? 'projects' : column === 'company' ? 'customers' : 'projects')
+    .select('*', { count: 'exact', head: true })
+    .eq('team_id', teamId)
+    .eq(column, key)
+
+  results.push({ table: column === 'company' ? 'customers' : 'projects', count: count || 0 })
+  return results
 }

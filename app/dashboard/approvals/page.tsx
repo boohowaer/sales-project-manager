@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { RejectDialog } from '@/components/admin/RejectDialog'
 import { toast } from 'react-hot-toast'
 import type { ApprovalRequest } from '@/types'
+import { useUser } from '@/context/UserContext'
+import { PageLoading } from '@/components/ui/page-loading'
 
 const TYPE_LABELS: Record<string, string> = {
   create_customer: '新建客户',
@@ -70,8 +72,8 @@ function ApprovalCard({
   loading: string | null
 }) {
   return (
-    <div className="rounded-2xl border-0 bg-white shadow-sm p-4 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="rounded-2xl border-0 bg-white shadow-sm pt-4 pb-3 px-4 space-y-3">
+      <div className="flex items-center justify-between py-1">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="rounded-full text-xs">
             {TYPE_LABELS[req.type] ?? req.type}
@@ -88,7 +90,7 @@ function ApprovalCard({
         {Object.entries(req.payload as Record<string, any>)
           .filter(([, v]) => v !== null && v !== undefined && v !== '')
           .map(([k, v]) => (
-            <div key={k} className="flex gap-2">
+            <div key={k} className="flex items-center gap-2">
               <span className="text-zinc-400 shrink-0">{PAYLOAD_LABELS[k] ?? k}：</span>
               <span className="text-zinc-700">{String(v)}</span>
             </div>
@@ -107,16 +109,14 @@ function ApprovalCard({
                 size="sm"
                 onClick={() => onApprove(req.id)}
                 disabled={loading === req.id}
-                className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm"
               >
                 通过
               </Button>
               <Button
                 size="sm"
-                variant="outline"
+                variant="cancel"
                 onClick={() => onReject(req.id)}
                 disabled={loading === req.id}
-                className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50"
               >
                 驳回
               </Button>
@@ -125,10 +125,9 @@ function ApprovalCard({
           {canUrge && (
             <Button
               size="sm"
-              variant="outline"
+              variant="cancel"
               onClick={() => onUrge(req.id)}
               disabled={loading === req.id}
-              className="rounded-full border-zinc-200 text-zinc-600 hover:bg-zinc-50"
             >
               催办
             </Button>
@@ -140,11 +139,12 @@ function ApprovalCard({
 }
 
 export default function ApprovalsPage() {
+  const me = useUser()
+  const role = me?.role ?? null
+  const userId = me?.userId ?? null
+  const approvalCc = me?.approvalCc ?? false
   const [requests, setRequests] = useState<ApprovalRequest[]>([])
   const [myRequests, setMyRequests] = useState<ApprovalRequest[]>([])
-  const [role, setRole] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [approvalCc, setApprovalCc] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
   const [loading, setLoading] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<string | null>(null)
@@ -153,12 +153,6 @@ export default function ApprovalsPage() {
   const isManager = role === 'super_admin' || role === 'sales_manager'
 
   const loadData = useCallback(async () => {
-    const meRes = await fetch('/api/me')
-    const me = await meRes.json()
-    setRole(me.role)
-    setUserId(me.userId)
-    setApprovalCc(me.approvalCc ?? false)
-
     const [allRes, mineRes] = await Promise.all([
       fetch('/api/approvals'),
       fetch('/api/approvals?mine=true'),
@@ -236,35 +230,34 @@ export default function ApprovalsPage() {
     requests
 
   if (pageLoading) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-20 text-zinc-400 text-sm">加载中...</div>
-      </div>
-    )
+    return <PageLoading variant="approvals" />
   }
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">审批</h1>
-        <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
-      </div>
-
-      <div className="flex gap-2 mb-6">
+      <div className="flex items-end justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">审批</h1>
+          <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
+        </div>
+        {tabs.length > 1 && (
+          <div className="inline-flex items-center bg-zinc-100 rounded-full p-1 h-9 whitespace-nowrap shadow-sm -translate-y-1">
             {tabs.map(t => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                onClick={() => activeTab !== t.key && setTab(t.key)}
+                className={`h-7 px-4 text-xs font-medium rounded-full transition-all duration-200 ${
                   activeTab === t.key
-                    ? 'bg-zinc-900 text-white'
-                    : 'bg-white text-zinc-600 hover:bg-zinc-100 border border-zinc-200'
+                    ? 'bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+                    : 'text-zinc-500 hover:text-zinc-800'
                 }`}
               >
                 {t.label}
               </button>
             ))}
           </div>
+        )}
+      </div>
 
           {displayRequests.length === 0 ? (
             <Card className="rounded-2xl shadow-sm border-0 bg-white">

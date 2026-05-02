@@ -76,7 +76,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 pt-2">
-            <Button type="submit" className="w-full bg-zinc-900 text-white hover:bg-zinc-800 rounded-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '登录中...' : '登录'}
             </Button>
             <div className="text-sm text-center text-zinc-600">

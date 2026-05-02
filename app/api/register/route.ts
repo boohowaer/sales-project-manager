@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { writeNotifications, getTeamSuperAdmins } from '@/lib/supabase/inbox-queries'
+import { writeNotifications, getTeamSuperAdmins } from '@/lib/supabase/notification-queries'
 
 function adminClient() {
   return createClient(

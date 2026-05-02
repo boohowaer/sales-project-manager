@@ -2,8 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-
-type Member = { user_id: string; email: string; role: string }
+import { useTeamMembers } from '@/context/UserContext'
 
 export function AssignDialog({ open, onClose, resourceType, resourceId, onSuccess }: {
   open: boolean
@@ -12,27 +11,13 @@ export function AssignDialog({ open, onClose, resourceType, resourceId, onSucces
   resourceId: string
   onSuccess: () => void
 }) {
-  const [members, setMembers] = useState<Member[]>([])
+  const { members, ensureMembers } = useTeamMembers()
   const [selected, setSelected] = useState<string>('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!open || !resourceId) return
-    fetch('/api/admin/users')
-      .then(r => {
-        if (!r.ok) {
-          console.error('fetch /api/admin/users failed:', r.status, r.statusText)
-          return []
-        }
-        return r.json()
-      })
-      .then(data => {
-        setMembers(Array.isArray(data) ? data : [])
-      })
-      .catch(err => {
-        console.error('AssignDialog fetch error:', err)
-      })
-  }, [open, resourceId])
+    if (open && resourceId) ensureMembers()
+  }, [open, resourceId, ensureMembers])
 
   async function handleAssign() {
     if (!selected) return
@@ -67,10 +52,10 @@ export function AssignDialog({ open, onClose, resourceType, resourceId, onSucces
           ))}
         </div>
         <DialogFooter>
+          <Button variant="cancel" onClick={onClose}>取消</Button>
           <Button onClick={handleAssign} disabled={loading || !selected}>
             {loading ? '分派中...' : '确认分派'}
           </Button>
-          <Button variant="outline" onClick={onClose}>取消</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

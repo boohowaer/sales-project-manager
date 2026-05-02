@@ -22,8 +22,8 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value, options)
-            supabaseResponse.cookies.set(name, value, options)
+            request.cookies.set({ name, value, ...options } as any)
+            supabaseResponse.cookies.set({ name, value, ...options } as any)
           })
         },
       },

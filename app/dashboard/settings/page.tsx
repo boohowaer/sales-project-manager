@@ -7,8 +7,10 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
+import { PageLoading } from '@/components/ui/page-loading'
 
 export default function SettingsPage() {
   const [fontFamily, setFontFamily] = useState('Poppins, Inter')
@@ -111,16 +113,7 @@ export default function SettingsPage() {
     { value: 'monospace', label: '等宽字体' }
   ]
 
-  // 加载时显示加载中
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-20">
-          <div className="text-zinc-400 text-sm">加载中...</div>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <PageLoading variant="settings" />
 
   return (
     <div className="p-8 max-w-4xl">
@@ -209,15 +202,13 @@ export default function SettingsPage() {
                 <div>
                   <Label htmlFor="reminder-enabled" className="text-sm font-medium text-zinc-700">启用提醒</Label>
                   <p className="text-sm text-zinc-500 mt-1">
-                    在首页信息提醒中显示即将到期的关注节点和任务，并推送浏览器通知
+                    在首页信息提醒中显示即将到期的关注节点和任务
                   </p>
                 </div>
-                <input
+                <Checkbox
                   id="reminder-enabled"
-                  type="checkbox"
                   checked={reminderEnabled}
-                  onChange={(e) => setReminderEnabled(e.target.checked)}
-                  className="w-5 h-5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
+                  onCheckedChange={(checked) => setReminderEnabled(checked as boolean)}
                 />
               </div>
 
@@ -239,7 +230,7 @@ export default function SettingsPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-zinc-500 mt-2">
-                      任务到期前多久在提醒面板显示，并推送浏览器通知
+                      任务到期前多久在提醒面板显示
                     </p>
                   </div>
 
@@ -258,7 +249,7 @@ export default function SettingsPage() {
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-zinc-500 mt-2">
-                      节点到期前多少天在提醒面板显示，并推送浏览器通知
+                      节点到期前多少天在提醒面板显示
                     </p>
                   </div>
                 </>
@@ -294,7 +285,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="flex justify-end pt-2">
-                <Button onClick={handleChangePassword} disabled={pwdSaving} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
+                <Button onClick={handleChangePassword} disabled={pwdSaving}>
                   {pwdSaving ? '修改中...' : '修改密码'}
                 </Button>
               </div>
@@ -303,7 +294,7 @@ export default function SettingsPage() {
 
           {/* 保存按钮 */}
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saving} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? '保存中...' : '保存设置'}
             </Button>
           </div>

@@ -278,7 +278,7 @@ export function validateProjectCSV(
       continue
     }
 
-    const project: Partial<ProjectInsert & { customer_name: string }> = {}
+    const project: Partial<ProjectInsert & { customer_name: string; customer_source?: string; has_start_notice: boolean; contract_signed: boolean }> = {}
     let rowHasError = false
 
     // 项目名称 (必填)
@@ -308,6 +308,12 @@ export function validateProjectCSV(
       }
     }
 
+    // 客户来源 (可选，存储原始值，后续在API中匹配字典)
+    const customerSourceIndex = cleanHeaders.indexOf('客户来源')
+    if (customerSourceIndex !== -1 && row[customerSourceIndex]) {
+      project.customer_source = row[customerSourceIndex]!.trim()
+    }
+
     // 项目描述 (可选)
     const descIndex = cleanHeaders.indexOf('项目描述')
     if (descIndex !== -1 && row[descIndex]) {
@@ -323,16 +329,16 @@ export function validateProjectCSV(
     const statusIndex = cleanHeaders.indexOf('项目状态')
     if (statusIndex !== -1 && row[statusIndex]) {
       const status = row[statusIndex]!.trim().toLowerCase()
-      const validStatuses = ['active', 'won', 'lost', 'on_hold']
+      const validStatuses = ['active', 'won', 'lost', 'on_hold', 'archived']
       if (!validStatuses.includes(status)) {
         errors.push({
           row: rowNum,
           field: '项目状态',
-          message: `项目状态必须是以下之一: active, won, lost, on_hold`
+          message: `项目状态必须是以下之一: active, won, lost, on_hold, archived`
         })
         rowHasError = true
       } else {
-        project.status = status as 'active' | 'won' | 'lost' | 'on_hold'
+        project.status = status as 'active' | 'won' | 'lost' | 'on_hold' | 'archived'
       }
     } else {
       project.status = 'active'

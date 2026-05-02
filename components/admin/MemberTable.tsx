@@ -44,6 +44,10 @@ export function MemberTable({ members: initialMembers, onUpdate, currentUserId }
     })
     setLoading(null)
     onUpdate()
+    // pending→active 时刷新铃铛（成员申请处理完成）
+    if (updates.status && updates.status !== 'pending') {
+      window.dispatchEvent(new Event('refresh-bell'))
+    }
   }
 
   return (

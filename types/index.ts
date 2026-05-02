@@ -48,10 +48,10 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          customer_id: string
+          customer_id: string | null
           name: string
           description: string | null
-          status: 'active' | 'won' | 'lost' | 'on_hold'
+          status: 'active' | 'won' | 'lost' | 'on_hold' | 'archived'
           value: number | null
           start_date: string | null
           expected_close_date: string | null
@@ -62,22 +62,26 @@ export type Database = {
           settlement_stages: number
           belong_year: number | null
           signed_at: string | null
+          customer_source: string | null
+          industry: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          customer_id: string
+          customer_id?: string | null
           name: string
           description?: string | null
-          status?: 'active' | 'won' | 'lost' | 'on_hold'
+          status?: 'active' | 'won' | 'lost' | 'on_hold' | 'archived'
           value?: number | null
           start_date?: string | null
           expected_close_date?: string | null
           actual_close_date?: string | null
           probability?: number
           signed_at?: string | null
+          customer_source?: string | null
+          industry?: string | null
           created_at?: string
           updated_at?: string
           belong_year?: number | null
@@ -85,16 +89,18 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string
-          customer_id?: string
+          customer_id?: string | null
           name?: string
           description?: string | null
-          status?: 'active' | 'won' | 'lost' | 'on_hold'
+          status?: 'active' | 'won' | 'lost' | 'on_hold' | 'archived'
           value?: number | null
           start_date?: string | null
           expected_close_date?: string | null
           actual_close_date?: string | null
           probability?: number
           signed_at?: string | null
+          customer_source?: string | null
+          industry?: string | null
           created_at?: string
           updated_at?: string
           belong_year?: number | null

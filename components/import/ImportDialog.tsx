@@ -21,10 +21,12 @@ interface ImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImportSuccess: () => void
-  type: 'customers' | 'projects'
+  type: 'customers' | 'projects' | 'dictionary'
   title: string
   description: string
   templateLinks: TemplateLink[]
+  endpoint?: string // 自定义导入端点
+  extraParams?: Record<string, string> // 额外参数
 }
 
 export function ImportDialog({
@@ -34,7 +36,9 @@ export function ImportDialog({
   type,
   title,
   description,
-  templateLinks
+  templateLinks,
+  endpoint,
+  extraParams
 }: ImportDialogProps) {
   const [file, setFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
@@ -108,11 +112,23 @@ export function ImportDialog({
       const formData = new FormData()
       formData.append('file', file)
 
-      const endpoint = type === 'customers'
-        ? '/api/import/customers'
-        : '/api/import/projects'
+      // 添加额外参数
+      if (extraParams) {
+        Object.entries(extraParams).forEach(([key, value]) => {
+          formData.append(key, value)
+        })
+      }
 
-      const response = await fetch(endpoint, {
+      // 确定导入端点
+      const importEndpoint = endpoint || (
+        type === 'customers'
+          ? '/api/import/customers'
+          : type === 'projects'
+            ? '/api/import/projects'
+            : '/api/admin/dictionary/import'
+      )
+
+      const response = await fetch(importEndpoint, {
         method: 'POST',
         body: formData
       })
@@ -130,7 +146,13 @@ export function ImportDialog({
       }
 
       // 显示详细的导入结果
-      if (result.skippedCount > 0) {
+      if (result.pendingApproval) {
+        // 销售代表提交审批的情况
+        toast.success(result.message || '已提交审批')
+        window.dispatchEvent(new Event('refresh-bell'))
+      } else if (result.count !== undefined) {
+        toast.success(`成功导入 ${result.count} 条`)
+      } else if (result.skippedCount > 0) {
         toast.success(`${result.message}（总计 ${result.totalRows} 条记录）`)
       } else {
         toast.success(result.message || '导入成功')
@@ -306,16 +328,14 @@ export function ImportDialog({
           <div className="flex justify-end gap-2.5 pt-2">
             <Button
               type="button"
-              variant="outline"
+              variant="cancel"
               onClick={handleClose}
-              className="border-zinc-200 text-zinc-700 hover:bg-zinc-50"
             >
               取消
             </Button>
             <Button
               onClick={handleImport}
               disabled={!file || importing}
-              className="bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
             >
               {importing ? '导入中...' : '开始导入'}
             </Button>

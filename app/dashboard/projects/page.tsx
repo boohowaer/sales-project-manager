@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getProjects, getCustomers, createProject, updateProject, deleteProject, getSettlementStages, createTask, getSettlementStagesBatch } from '@/lib/supabase/queries'
+import { getProjects, getCustomers, createProject, updateProject, deleteProject, createTask } from '@/lib/supabase/queries'
 import { SettlementStagesManager } from '@/components/projects/SettlementStagesManager'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,14 +13,20 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { DictSelect } from '@/components/ui/dict-select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Pencil, Trash2, Coins, Search, Filter, X, CheckSquare, RotateCcw, Upload, UserPlus } from 'lucide-react'
+import { Plus, Pencil, Trash2, Coins, Search, Filter, X, CheckSquare, RotateCcw, Upload, UserPlus, Calendar } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Project, Customer } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
 import { useTeamView } from '@/hooks/useTeamView'
 import { AssignDialog } from '@/components/admin/AssignDialog'
+import { useUser, useTeamMembers } from '@/context/UserContext'
+import { useDictionaries } from '@/context/DictionaryContext'
+import { readPageCache, writePageCache } from '@/lib/page-cache'
+import { PageLoading } from '@/components/ui/page-loading'
 
 // 辅助函数：获取验收/开票/回款状态Badge
 const getStatusBadge = (type: 'accepted' | 'invoiced' | 'paid', count: number, total: number) => {
@@ -54,10 +60,12 @@ export default function ProjectsPage() {
 
   const router = useRouter()
   const { viewMode, toggle } = useTeamView()
-  const [isManager, setIsManager] = useState(false)
-  const [isSalesRep, setIsSalesRep] = useState(false)
-  const [dataScope, setDataScope] = useState<'own' | 'team'>('own')
+  const me = useUser()
+  const isManager = me?.role === 'super_admin' || me?.role === 'sales_manager'
+  const isSalesRep = me?.role === 'sales_rep'
+  const dataScope: 'own' | 'team' = me?.dataScope ?? 'own'
   const [assignTarget, setAssignTarget] = useState<string | null>(null)
+  // 缓存读取放到 useEffect 中执行，避免 SSR/CSR 初始 state 不一致引发 hydration mismatch
   const [projects, setProjects] = useState<any[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,79 +79,64 @@ export default function ProjectsPage() {
   const [selectedProjectValue, setSelectedProjectValue] = useState<number | null>(null)
   const [selectedProjectSettlements, setSelectedProjectSettlements] = useState<any[]>([])
 
-  // 筛选状态 - 从localStorage恢复（默认包含已归档状态，确保已归档项目可见）
-  const [filterProjectStatus, setFilterProjectStatus] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterProjectStatus')
-      // 如果没有保存的筛选条件，默认不筛选任何状态（显示所有状态，包括已归档）
-      return saved ? JSON.parse(saved) : []
+  // 筛选状态 - 从localStorage恢复
+  const getSavedFilter = (key: string): string[] => {
+    if (typeof window === 'undefined') return []
+    const saved = localStorage.getItem('projects-filterState')
+    if (!saved) {
+      // 兼容旧格式
+      const old = localStorage.getItem(`projects-${key}`)
+      return old ? JSON.parse(old) : []
     }
-    return []
-  })
-  const [filterContractStatus, setFilterContractStatus] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterContractStatus')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
-  const [filterAcceptedStatus, setFilterAcceptedStatus] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterAcceptedStatus')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
-  const [filterInvoicedStatus, setFilterInvoicedStatus] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterInvoicedStatus')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
-  const [filterPaidStatus, setFilterPaidStatus] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterPaidStatus')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
-  const [filterBelongYear, setFilterBelongYear] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterBelongYear')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
-  const [filterSales, setFilterSales] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterSales')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
-  const [teamMembers, setTeamMembers] = useState<{user_id: string, email: string, name?: string}[]>([])
-  const [filterMilestone, setFilterMilestone] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('projects-filterMilestone')
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
-  })
+    return JSON.parse(saved)[key] || []
+  }
+
+  const [filterProjectStatus, setFilterProjectStatus] = useState<string[]>(() => getSavedFilter('filterProjectStatus'))
+  const [filterContractStatus, setFilterContractStatus] = useState<string[]>(() => getSavedFilter('filterContractStatus'))
+  const [filterAcceptedStatus, setFilterAcceptedStatus] = useState<string[]>(() => getSavedFilter('filterAcceptedStatus'))
+  const [filterInvoicedStatus, setFilterInvoicedStatus] = useState<string[]>(() => getSavedFilter('filterInvoicedStatus'))
+  const [filterPaidStatus, setFilterPaidStatus] = useState<string[]>(() => getSavedFilter('filterPaidStatus'))
+  const [filterBelongYear, setFilterBelongYear] = useState<string[]>(() => getSavedFilter('filterBelongYear'))
+  const [filterSales, setFilterSales] = useState<string[]>(() => getSavedFilter('filterSales'))
+  const { members: teamMembers, ensureMembers } = useTeamMembers()
+  const [filterMilestone, setFilterMilestone] = useState<string[]>(() => getSavedFilter('filterMilestone'))
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
   const [settlementsMap, setSettlementsMap] = useState<Map<string, any[]>>(new Map())
 
-  // 保存筛选器状态到localStorage
+  // 字典数据来自全局 DictionaryContext（按需懒加载 + 跨页缓存）
+  const dicts = useDictionaries(['customer_source', 'industry', 'project_status'])
+  const buildCascade = (entries: any[]) => {
+    const active = entries.filter(e => e.is_active)
+    const parents = active.filter((e: any) => !e.parent_id || e.level === 1)
+    return parents.map((parent: any) => ({
+      key: parent.key,
+      label: parent.label,
+      children: active
+        .filter((c: any) => c.parent_id === parent.id)
+        .map((c: any) => ({ key: c.key, label: c.label })),
+    }))
+  }
+  const customerSourceOptions = useMemo(() => buildCascade(dicts.customer_source || []), [dicts.customer_source])
+  const industryOptions = useMemo(() => buildCascade(dicts.industry || []), [dicts.industry])
+  const projectStatusOptions = useMemo(
+    () => (dicts.project_status || []).filter(e => e.is_active).map(e => ({ key: e.key, label: e.label })),
+    [dicts.project_status]
+  )
+
+  // 保存筛选器状态到localStorage（合并为一次写入）
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('projects-filterProjectStatus', JSON.stringify(filterProjectStatus))
-      localStorage.setItem('projects-filterContractStatus', JSON.stringify(filterContractStatus))
-      localStorage.setItem('projects-filterAcceptedStatus', JSON.stringify(filterAcceptedStatus))
-      localStorage.setItem('projects-filterInvoicedStatus', JSON.stringify(filterInvoicedStatus))
-      localStorage.setItem('projects-filterPaidStatus', JSON.stringify(filterPaidStatus))
-      localStorage.setItem('projects-filterBelongYear', JSON.stringify(filterBelongYear))
-      localStorage.setItem('projects-filterMilestone', JSON.stringify(filterMilestone))
-      localStorage.setItem('projects-filterSales', JSON.stringify(filterSales))
+      const filterState = {
+        filterProjectStatus,
+        filterContractStatus,
+        filterAcceptedStatus,
+        filterInvoicedStatus,
+        filterPaidStatus,
+        filterBelongYear,
+        filterMilestone,
+        filterSales
+      }
+      localStorage.setItem('projects-filterState', JSON.stringify(filterState))
     }
   }, [filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear, filterMilestone, filterSales])
 
@@ -154,14 +147,15 @@ export default function ProjectsPage() {
     description: '',
     project_id: '',
     priority: 'medium',
-    due_date: '',
-    status: 'pending'
+    due_date: ''
   })
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     customer_id: '',
+    customer_source: '',
+    industry: '',
     status: 'active',
     value: '',
     probability: 50,
@@ -174,43 +168,48 @@ export default function ProjectsPage() {
     belong_year: ''
   })
 
-  useEffect(() => {
-    fetch('/api/me').then(r => r.json()).then(d => {
-      setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
-      setIsSalesRep(d.role === 'sales_rep')
-      setDataScope(d.dataScope ?? 'own')
-    })
-  }, [])
+  const initialLoadDone = useRef(false)
 
   useEffect(() => {
-    loadData()
+    if (!initialLoadDone.current) {
+      // 客户端读缓存：有则立即填充以避免骨架屏闪烁
+      const cp = readPageCache<any[]>('projects:' + dataScope)
+      const cc = readPageCache<Customer[]>('customers:' + dataScope)
+      if (cp) {
+        setProjects(cp)
+        const map = new Map<string, any[]>()
+        cp.forEach((p: any) => map.set(p.id, p._settlements || []))
+        setSettlementsMap(map)
+        setLoading(false)
+      }
+      if (cc) setCustomers(cc)
 
-    // 检查是否需要自动打开项目创建对话框
-    const shouldOpenDialog = sessionStorage.getItem('openProjectDialog')
-    if (shouldOpenDialog === 'true') {
-      setDialogOpen(true)
-      sessionStorage.removeItem('openProjectDialog')
+      const shouldOpenDialog = sessionStorage.getItem('openProjectDialog')
+      if (shouldOpenDialog === 'true') {
+        setDialogOpen(true)
+        sessionStorage.removeItem('openProjectDialog')
+      }
+      initialLoadDone.current = true
     }
-  }, [])
-
-  useEffect(() => {
     loadData()
   }, [viewMode])
 
   const loadData = async () => {
     try {
-      const fetches: Promise<any>[] = [
+      // team view 时按需触发成员缓存加载（不阻塞主请求）
+      if (viewMode === 'team') ensureMembers()
+
+      const [projectsData, customersData] = await Promise.all([
         getProjects({ teamView: viewMode === 'team' }),
-        getCustomers()
-      ]
-      if (viewMode === 'team') fetches.push(fetch('/api/admin/users').then(r => r.ok ? r.json() : []))
-      const [projectsData, customersData, membersData] = await Promise.all(fetches)
+        getCustomers(),
+      ])
       setProjects(projectsData)
       setCustomers(customersData)
-      if (membersData) setTeamMembers(membersData)
+      writePageCache('projects:' + (viewMode === 'team' ? 'team' : 'own'), projectsData)
+      writePageCache('customers:' + (viewMode === 'team' ? 'team' : 'own'), customersData)
 
-      const projectIds = projectsData.map((p: any) => p.id)
-      const map = await getSettlementStagesBatch(projectIds)
+      const map = new Map<string, any[]>()
+      projectsData.forEach((p: any) => map.set(p.id, p._settlements || []))
       setSettlementsMap(map)
     } catch (error: any) {
       console.error('加载数据失败:', error)
@@ -234,16 +233,13 @@ export default function ProjectsPage() {
         ? formData.settlement_stages
         : parseInt(formData.settlement_stages as any) || 1
 
-      console.log('准备保存项目数据:', {
-        ...formData,
-        settlement_stages: settlementStagesNumber
-      })
-
       if (editingId) {
         const updateData = {
           name: formData.name,
           description: formData.description || null,
           customer_id: formData.customer_id,
+          customer_source: formData.customer_source || null,
+          industry: formData.industry || null,
           status: formData.status as any,
           value: formData.value ? parseFloat(formData.value) : null,
           probability: formData.probability,
@@ -289,6 +285,8 @@ export default function ProjectsPage() {
           name: formData.name,
           description: formData.description || null,
           customer_id: formData.customer_id,
+          customer_source: formData.customer_source || null,
+          industry: formData.industry || null,
           status: formData.status as any,
           value: formData.value ? parseFloat(formData.value) : null,
           probability: formData.probability,
@@ -322,6 +320,8 @@ export default function ProjectsPage() {
         name: '',
         description: '',
         customer_id: '',
+        customer_source: '',
+        industry: '',
         status: 'active',
         value: '',
         probability: 50,
@@ -347,6 +347,8 @@ export default function ProjectsPage() {
       name: project.name,
       description: project.description || '',
       customer_id: project.customer_id,
+      customer_source: project.customer_source || '',
+      industry: project.industry || '',
       status: project.status,
       value: project.value ? project.value.toString() : '',
       probability: project.probability,
@@ -366,16 +368,7 @@ export default function ProjectsPage() {
     setSelectedProjectId(project.id)
     setSelectedProjectStages(project.settlement_stages || 1)
     setSelectedProjectValue(project.value || null)
-
-    // 从数据库获取结算段数据
-    try {
-      const settlements = await getSettlementStages(project.id)
-      setSelectedProjectSettlements(settlements)
-    } catch (error) {
-      console.error('获取结算段数据失败:', error)
-      setSelectedProjectSettlements([])
-    }
-
+    setSelectedProjectSettlements(project._settlements || [])
     setSettlementDialogOpen(true)
   }
 
@@ -391,6 +384,8 @@ export default function ProjectsPage() {
           name: '',
           description: '',
           customer_id: '',
+          customer_source: '',
+          industry: '',
           status: 'active',
           value: '',
           probability: 50,
@@ -422,26 +417,41 @@ export default function ProjectsPage() {
     }
   }
 
-  const getStatusColor2 = (status: string) => {
+  // 获取状态文本的颜色（纯文字，无背景）
+  const getStatusTextColor = (status: string) => {
     switch (status) {
-      case 'active': return 'default'
-      case 'won': return 'success'
-      case 'lost': return 'destructive'
-      case 'on_hold': return 'secondary'
-      case 'archived': return 'outline'
-      default: return 'default'
+      case 'won': return 'text-emerald-600'
+      case 'lost': return 'text-red-500'
+      case 'on_hold': return 'text-zinc-500'
+      case 'archived': return 'text-zinc-400'
+      default: return 'text-zinc-900'
     }
   }
 
+  // 状态默认映射（字典加载完成前的 fallback）
+  const statusDefaultLabels: Record<string, string> = {
+    active: '跟进中',
+    won: '已成交',
+    lost: '已丢失',
+    on_hold: '暂停',
+    archived: '已归档'
+  }
+
   const getStatusText2 = (status: string) => {
-    switch (status) {
-      case 'active': return '跟进中'
-      case 'won': return '已成交'
-      case 'lost': return '已丢失'
-      case 'on_hold': return '暂停'
-      case 'archived': return '已归档'
-      default: return status
+    const found = projectStatusOptions.find(o => o.key === status)
+    return found ? found.label : (statusDefaultLabels[status] || status)
+  }
+
+  // 在级联选项中查找标签
+  const findCascadeLabel = (options: { key: string; label: string; children?: { key: string; label: string }[] }[], key: string): string | undefined => {
+    for (const opt of options) {
+      if (opt.key === key) return opt.label
+      if (opt.children) {
+        const child = opt.children.find(c => c.key === key)
+        if (child) return child.label
+      }
     }
+    return undefined
   }
 
   // 辅助函数：根据验收/开票/回款状态获取标签颜色
@@ -451,7 +461,7 @@ export default function ProjectsPage() {
     return 'bg-amber-100 text-amber-700' // 未完成或部分完成
   }
 
-  const filteredProjects = projects.filter(project => {
+  const filteredProjects = useMemo(() => projects.filter(project => {
     // 搜索关键词筛选
     if (searchKeyword.trim()) {
       const keyword = searchKeyword.toLowerCase()
@@ -553,7 +563,7 @@ export default function ProjectsPage() {
 
       const matches = filterMilestone.some(type => {
         if (type === '计划签约') {
-          if (!project.expected_close_date || project.contract_signed || project.has_start_notice) return false
+          if (!project.expected_close_date || project.contract_signed) return false
           const d = new Date(project.expected_close_date)
           return d <= future30
         }
@@ -582,7 +592,7 @@ export default function ProjectsPage() {
     }
 
     return true
-  })
+  }), [projects, searchKeyword, filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear, filterSales, filterMilestone, settlementsMap])
 
   const handleOpenCreateTask = (projectId: string) => {
     setTaskFormData({
@@ -590,8 +600,7 @@ export default function ProjectsPage() {
       description: '',
       project_id: projectId,
       priority: 'medium',
-      due_date: '',
-      status: 'pending'
+      due_date: ''
     })
     setTaskDialogOpen(true)
   }
@@ -616,7 +625,7 @@ export default function ProjectsPage() {
         project_id: taskFormData.project_id,
         priority: taskFormData.priority as any,
         due_date: taskFormData.due_date ? new Date(taskFormData.due_date).toISOString() : null,
-        status: taskFormData.status as any
+        status: 'pending'
       })
       toast.success('任务创建成功')
       setTaskDialogOpen(false)
@@ -625,8 +634,7 @@ export default function ProjectsPage() {
         description: '',
         project_id: '',
         priority: 'medium',
-        due_date: '',
-        status: 'pending'
+        due_date: ''
       })
     } catch (error: any) {
       console.error('创建任务失败:', error)
@@ -635,61 +643,61 @@ export default function ProjectsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-20">
-          <div className="text-zinc-400 text-sm">加载中...</div>
-        </div>
-      </div>
-    )
+    return <PageLoading variant="card-list" />
   }
 
   return (
     <div className="p-8">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">项目管理</h1>
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有销售项目</p>
         </div>
-        <div className="flex gap-2 items-center">
-          {dataScope === 'team' && (
-            <button
-              onClick={toggle}
-              className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
-            >
-              {viewMode === 'mine' ? '查看全团队' : '只看我的'}
-            </button>
-          )}
-          <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-zinc-400" />
+        <div className="flex gap-3 items-center -translate-y-1">
+          <div className="relative flex items-center h-9">
+            <Search className="w-4 h-4 text-zinc-400 absolute left-4 pointer-events-none" />
             <Input
               placeholder="搜索项目或客户..."
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              className="w-48 h-8 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 text-sm"
+              className="h-9 w-56 pl-10 pr-4 rounded-full bg-transparent border-zinc-200 focus:border-zinc-300 placeholder:text-zinc-400 text-sm"
             />
           </div>
-
           <Button
             onClick={() => setFilterDialogOpen(true)}
             variant="outline"
-            className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-            size="sm"
+            className="h-9 px-3"
           >
-            <Filter className="w-4 h-4 mr-2" />
+            <Filter className="w-4 h-4 mr-1.5" />
             筛选
             {(filterProjectStatus.length > 0 || filterContractStatus.length > 0 || filterAcceptedStatus.length > 0 ||
               filterInvoicedStatus.length > 0 || filterPaidStatus.length > 0 || filterBelongYear.length > 0 || filterMilestone.length > 0 || filterSales.length > 0) && (
-              <Badge variant="secondary" className="ml-2 bg-zinc-900 text-white">
+              <Badge variant="secondary" className="ml-1.5 bg-zinc-900 text-white">
                 {filterProjectStatus.length + filterContractStatus.length + filterAcceptedStatus.length + filterInvoicedStatus.length + filterPaidStatus.length + filterBelongYear.length + filterMilestone.length + filterSales.length}
               </Badge>
             )}
           </Button>
+          {dataScope === 'team' && (
+            <div className="inline-flex items-center bg-zinc-100 rounded-full p-1 h-9 whitespace-nowrap shadow-sm">
+              <button
+                onClick={() => viewMode !== 'mine' && toggle()}
+                className={`h-7 px-4 text-xs font-medium rounded-full transition-all duration-200 ${viewMode === 'mine' ? 'bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'text-zinc-500 hover:text-zinc-800'}`}
+              >
+                只看我的
+              </button>
+              <button
+                onClick={() => viewMode !== 'team' && toggle()}
+                className={`h-7 px-4 text-xs font-medium rounded-full transition-all duration-200 ${viewMode === 'team' ? 'bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'text-zinc-500 hover:text-zinc-800'}`}
+              >
+                查看全团队
+              </button>
+            </div>
+          )}
 
           <Button
             onClick={() => setImportDialogOpen(true)}
-            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm"
+            className="h-9 shadow-sm"
           >
             <Upload className="w-4 h-4 mr-2" />
             批量导入
@@ -697,7 +705,7 @@ export default function ProjectsPage() {
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button disabled={customers.length === 0} className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">
+              <Button disabled={customers.length === 0} className="h-9 shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />
                 添加项目
               </Button>
@@ -737,25 +745,17 @@ export default function ProjectsPage() {
             <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">项目状态</Label>
               <div className="space-y-1.5">
-                {[
-                  { value: 'active', label: '跟进中' },
-                  { value: 'won', label: '已成交' },
-                  { value: 'lost', label: '已丢失' },
-                  { value: 'on_hold', label: '暂停' },
-                  { value: 'archived', label: '已归档' }
-                ].map(status => (
-                  <label key={status.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filterProjectStatus.includes(status.value)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setFilterProjectStatus([...filterProjectStatus, status.value])
+                {projectStatusOptions.map(status => (
+                  <label key={status.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={filterProjectStatus.includes(status.key)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setFilterProjectStatus([...filterProjectStatus, status.key])
                         } else {
-                          setFilterProjectStatus(filterProjectStatus.filter(s => s !== status.value))
+                          setFilterProjectStatus(filterProjectStatus.filter(s => s !== status.key))
                         }
                       }}
-                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                     />
                     <span className="text-zinc-700">{status.label}</span>
                   </label>
@@ -769,17 +769,15 @@ export default function ProjectsPage() {
               <div className="space-y-1.5">
                 {['未签约', '开工函', '合同签约'].map(status => (
                   <label key={status} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={filterContractStatus.includes(status)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
+                      onCheckedChange={(checked) => {
+                        if (checked) {
                           setFilterContractStatus([...filterContractStatus, status])
                         } else {
                           setFilterContractStatus(filterContractStatus.filter(s => s !== status))
                         }
                       }}
-                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                     />
                     <span className="text-zinc-700">{status}</span>
                   </label>
@@ -793,17 +791,15 @@ export default function ProjectsPage() {
               <div className="space-y-1.5">
                 {['已验收', '未验收', '部分验收'].map(status => (
                   <label key={status} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={filterAcceptedStatus.includes(status)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
+                      onCheckedChange={(checked) => {
+                        if (checked) {
                           setFilterAcceptedStatus([...filterAcceptedStatus, status])
                         } else {
                           setFilterAcceptedStatus(filterAcceptedStatus.filter(s => s !== status))
                         }
                       }}
-                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                     />
                     <span className="text-zinc-700">{status}</span>
                   </label>
@@ -817,17 +813,15 @@ export default function ProjectsPage() {
               <div className="space-y-1.5">
                 {['已开票', '未开票', '部分开票'].map(status => (
                   <label key={status} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={filterInvoicedStatus.includes(status)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
+                      onCheckedChange={(checked) => {
+                        if (checked) {
                           setFilterInvoicedStatus([...filterInvoicedStatus, status])
                         } else {
                           setFilterInvoicedStatus(filterInvoicedStatus.filter(s => s !== status))
                         }
                       }}
-                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                     />
                     <span className="text-zinc-700">{status}</span>
                   </label>
@@ -841,17 +835,15 @@ export default function ProjectsPage() {
               <div className="space-y-1.5">
                 {['已回款', '未回款', '部分回款'].map(status => (
                   <label key={status} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={filterPaidStatus.includes(status)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
+                      onCheckedChange={(checked) => {
+                        if (checked) {
                           setFilterPaidStatus([...filterPaidStatus, status])
                         } else {
                           setFilterPaidStatus(filterPaidStatus.filter(s => s !== status))
                         }
                       }}
-                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                     />
                     <span className="text-zinc-700">{status}</span>
                   </label>
@@ -868,17 +860,15 @@ export default function ProjectsPage() {
                   .sort((a, b) => (b as number) - (a as number))
                   .map(year => (
                     <label key={year} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={filterBelongYear.includes(String(year))}
-                        onChange={(e) => {
-                          if (e.target.checked) {
+                        onCheckedChange={(checked) => {
+                          if (checked) {
                             setFilterBelongYear([...filterBelongYear, String(year)])
                           } else {
                             setFilterBelongYear(filterBelongYear.filter(y => y !== String(year)))
                           }
                         }}
-                        className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                       />
                       <span className="text-zinc-700">{year}年</span>
                     </label>
@@ -896,17 +886,15 @@ export default function ProjectsPage() {
                 <div className="space-y-1.5">
                   {teamMembers.map(m => (
                     <label key={m.user_id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={filterSales.includes(m.user_id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
+                        onCheckedChange={(checked) => {
+                          if (checked) {
                             setFilterSales([...filterSales, m.user_id])
                           } else {
                             setFilterSales(filterSales.filter(id => id !== m.user_id))
                           }
                         }}
-                        className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                       />
                       <span className="text-zinc-700">{m.name || '未知'}</span>
                     </label>
@@ -920,17 +908,15 @@ export default function ProjectsPage() {
               <div className="space-y-1.5">
                 {['计划签约', '计划验收', '计划开票', '计划回款'].map(type => (
                   <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={filterMilestone.includes(type)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
+                      onCheckedChange={(checked) => {
+                        if (checked) {
                           setFilterMilestone([...filterMilestone, type])
                         } else {
                           setFilterMilestone(filterMilestone.filter(s => s !== type))
                         }
                       }}
-                      className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400"
                     />
                     <span className="text-zinc-700">{type}</span>
                   </label>
@@ -942,7 +928,6 @@ export default function ProjectsPage() {
           <div className="flex justify-end mt-4 pr-2">
             <Button
               onClick={() => setFilterDialogOpen(false)}
-              className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full px-8"
             >
               确定
             </Button>
@@ -955,171 +940,234 @@ export default function ProjectsPage() {
         <DialogTrigger asChild>
           <Button style={{ display: 'none' }} />
         </DialogTrigger>
-        <DialogContent className="max-w-3xl rounded-2xl shadow-xl border-0">
+        <DialogContent className="max-w-4xl rounded-2xl shadow-xl border-0">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">{editingId ? "编辑项目" : "添加新项目"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 px-1">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name" className="text-sm font-medium text-zinc-700">项目名称 *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="例如：网站开发项目"
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="customer_id" className="text-sm font-medium text-zinc-700">客户 *</Label>
-                  <Select value={formData.customer_id} onValueChange={(value) => setFormData({ ...formData, customer_id: value })}>
-                    <SelectTrigger className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
-                      <SelectValue placeholder="选择客户" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-5 px-1">
+              {/* 基本信息 */}
               <div>
-                <Label htmlFor="description" className="text-sm font-medium text-zinc-700">项目描述</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="项目的详细信息..."
-                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 resize-none"
-                  rows={2}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="status" className="text-sm font-medium text-zinc-700">状态</Label>
-                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">跟进中</SelectItem>
-                      <SelectItem value="won">已成交</SelectItem>
-                      <SelectItem value="lost">已丢失</SelectItem>
-                      <SelectItem value="on_hold">暂停</SelectItem>
-                      <SelectItem value="archived">已归档</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="value" className="text-sm font-medium text-zinc-700">项目价值（元）</Label>
-                  <Input
-                    id="value"
-                    type="number"
-                    value={formData.value}
-                    onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                    placeholder="100000"
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">基本信息</div>
+                <div className="grid grid-cols-[1.6fr_1.2fr_0.6fr_0.6fr] gap-5">
+                  <div>
+                    <Label htmlFor="name" className="text-sm font-medium text-zinc-700">项目名称 *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="例如：网站开发项目"
                       className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">客户 *</Label>
+                    <DictSelect
+                      value={formData.customer_id}
+                      onChange={(value) => setFormData({ ...formData, customer_id: value })}
+                      options={customers.map((c) => ({ key: c.id, label: c.name, subLabel: c.company || undefined }))}
+                      placeholder="搜索选择客户"
+                      className="mt-2"
+                      showClear={false}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">客户来源</Label>
+                    <DictSelect
+                      value={formData.customer_source}
+                      onChange={(value) => setFormData({ ...formData, customer_source: value })}
+                      options={customerSourceOptions}
+                      placeholder="选择客户来源"
+                      className="mt-2"
+                      cascade
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">行业归属</Label>
+                    <DictSelect
+                      value={formData.industry}
+                      onChange={(value) => setFormData({ ...formData, industry: value })}
+                      options={industryOptions}
+                      placeholder="搜索选择行业"
+                      className="mt-2"
+                      cascade
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="belong_year" className="text-sm font-medium text-zinc-700">归属年份</Label>
-                  <Input
-                    id="belong_year"
-                    type="number"
-                    min="2000"
-                    max="2100"
-                    value={formData.belong_year}
-                    onChange={(e) => setFormData({ ...formData, belong_year: e.target.value })}
-                    placeholder="2024"
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                <div className="mt-4">
+                  <Label htmlFor="description" className="text-sm font-medium text-zinc-700">项目描述</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="项目的详细信息..."
+                    className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 resize-none"
+                    rows={2}
                   />
                 </div>
               </div>
 
-              {/* 第四行：时间信息 */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="start_date" className="text-sm font-medium text-zinc-700">开始日期</Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="expected_close_date" className="text-sm font-medium text-zinc-700">预期成交日期</Label>
-                  <Input
-                    id="expected_close_date"
-                    type="date"
-                    value={formData.expected_close_date}
-                    onChange={(e) => setFormData({ ...formData, expected_close_date: e.target.value })}
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signed_at" className="text-sm font-medium text-zinc-700">成交日期</Label>
-                  <Input
-                    id="signed_at"
-                    type="date"
-                    value={formData.signed_at}
-                    onChange={(e) => setFormData({ ...formData, signed_at: e.target.value })}
-                    className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                  />
-                </div>
-              </div>
-
-              {/* 第五行：合同状态 + 成功概率 */}
-              <div className="grid grid-cols-[auto_1fr] gap-6 mt-6">
-                <div>
-                  <Label className="text-sm font-medium text-zinc-700 mb-2 block">合同状态</Label>
-                  <div className="flex gap-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="has_start_notice"
-                        checked={formData.has_start_notice}
-                        onChange={(e) => setFormData({ ...formData, has_start_notice: e.target.checked })}
-                        className="w-4 h-4 rounded border-zinc-300 accent-zinc-600"
-                      />
-                      <Label htmlFor="has_start_notice" className="text-sm cursor-pointer">有开工函</Label>
+              {/* 状态信息 */}
+              <div>
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">状态信息</div>
+                <div className="grid grid-cols-4 gap-5">
+                  <div>
+                    <Label htmlFor="value" className="text-sm font-medium text-zinc-700">项目价值（元）</Label>
+                    <Input
+                      id="value"
+                      type="number"
+                      value={formData.value}
+                      onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                      placeholder="100000"
+                      className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">状态</Label>
+                    <DictSelect
+                      value={formData.status}
+                      onChange={(value) => setFormData({ ...formData, status: value })}
+                      options={
+                        formData.contract_signed
+                          ? projectStatusOptions.filter(o => o.key === 'won' || o.key === 'archived')
+                          : projectStatusOptions
+                      }
+                      placeholder="选择状态"
+                      className="mt-2"
+                      showClear={false}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">开工函</Label>
+                    <div className="flex gap-1.5 mt-2 h-10 items-center">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, has_start_notice: false })}
+                        className={`flex-1 h-10 px-3 rounded-full text-xs font-medium transition-colors ${
+                          !formData.has_start_notice
+                            ? 'bg-zinc-900 text-white'
+                            : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'
+                        }`}
+                      >
+                        无
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, has_start_notice: true })}
+                        className={`flex-1 h-10 px-3 rounded-full text-xs font-medium transition-colors ${
+                          formData.has_start_notice
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'
+                        }`}
+                      >
+                        有
+                      </button>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="contract_signed"
-                        checked={formData.contract_signed}
-                        onChange={(e) => setFormData({ ...formData, contract_signed: e.target.checked })}
-                        className="w-4 h-4 rounded border-zinc-300 accent-zinc-600"
-                      />
-                      <Label htmlFor="contract_signed" className="text-sm cursor-pointer">已签署合同</Label>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">签署合同</Label>
+                    <div className="flex gap-1.5 mt-2 h-10 items-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, contract_signed: false })
+                        }}
+                        className={`flex-1 h-10 px-3 rounded-full text-xs font-medium transition-colors ${
+                          !formData.contract_signed
+                            ? 'bg-zinc-900 text-white'
+                            : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'
+                        }`}
+                      >
+                        未签
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            contract_signed: true,
+                            status: 'won'
+                          })
+                        }}
+                        className={`flex-1 h-10 px-3 rounded-full text-xs font-medium transition-colors ${
+                          formData.contract_signed
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-zinc-200 text-zinc-600 hover:bg-zinc-300'
+                        }`}
+                      >
+                        已签
+                      </button>
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 ml-8">
-                  <Label htmlFor="probability" className="text-sm font-medium text-zinc-700 mb-2 block">成功概率：{formData.probability}%</Label>
-                  <input
-                    id="probability"
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={formData.probability}
-                    onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })}
-                    className="w-full h-2 accent-zinc-600"
-                  />
+              </div>
+
+              {/* 时间信息 */}
+              <div>
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">时间信息</div>
+                <div className="grid grid-cols-4 gap-5">
+                  <div>
+                    <Label htmlFor="belong_year" className="text-sm font-medium text-zinc-700">归属年份</Label>
+                    <Input
+                      id="belong_year"
+                      type="number"
+                      min="2000"
+                      max="2100"
+                      value={formData.belong_year}
+                      onChange={(e) => setFormData({ ...formData, belong_year: e.target.value })}
+                      placeholder="2024"
+                      className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">开始日期</Label>
+                    <DatePicker
+                      value={formData.start_date}
+                      onChange={(value) => setFormData({ ...formData, start_date: value })}
+                      placeholder="选择开始日期"
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">预期成交日期</Label>
+                    <DatePicker
+                      value={formData.expected_close_date}
+                      onChange={(value) => setFormData({ ...formData, expected_close_date: value })}
+                      placeholder="选择预期成交日期"
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-700">成交日期</Label>
+                    <DatePicker
+                      value={formData.signed_at}
+                      onChange={(value) => setFormData({ ...formData, signed_at: value })}
+                      placeholder="选择成交日期"
+                      className="mt-2"
+                      disabled={!formData.contract_signed}
+                    />
+                  </div>
                 </div>
               </div>
+
+              {/* 成功概率 */}
+              <div>
+                <Label htmlFor="probability" className="text-sm font-medium text-zinc-700">成功概率：{formData.probability}%</Label>
+                <input
+                  id="probability"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={formData.probability}
+                  onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })}
+                  className="w-full h-2 accent-zinc-600 mt-2"
+                />
+              </div>
+
               <div className="flex justify-end space-x-2 pt-2">
-                <Button type="button" onClick={() => setDialogOpen(false)} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">
+                <Button type="button" variant="cancel" onClick={() => setDialogOpen(false)}>
                   取消
                 </Button>
-                <Button type="submit" className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
+                <Button type="submit">
                   {editingId ? '保存' : '创建'}
                 </Button>
               </div>
@@ -1146,7 +1194,7 @@ export default function ProjectsPage() {
         <Card className="rounded-xl shadow-sm border-0 bg-white">
           <CardContent className="text-center py-8">
             <p className="text-sm text-zinc-400">没有找到匹配的项目</p>
-            <Button onClick={() => setSearchKeyword('')} variant="outline" size="sm" className="mt-3 h-8 text-sm">
+            <Button onClick={() => setSearchKeyword('')} variant="outline" size="sm" className="mt-3">
               清除搜索
             </Button>
           </CardContent>
@@ -1158,11 +1206,11 @@ export default function ProjectsPage() {
               <CardHeader className="pb-3 pt-3 px-4 border-b border-zinc-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-xs text-zinc-500 shrink-0">{project.customers?.name}</span>
+                    <span className="text-xs text-zinc-500 shrink-0">{project.customers?.name || '客户已删除'}</span>
                     <h3 className="font-semibold text-sm truncate">{project.name}</h3>
-                    <Badge variant={getStatusColor2(project.status) as any} className={`shrink-0${project.status === 'won' ? ' bg-transparent border-transparent text-emerald-600 hover:bg-transparent' : ''}`}>
+                    <span className={`shrink-0 text-xs font-semibold ${getStatusTextColor(project.status)}`}>
                       {getStatusText2(project.status)}
-                    </Badge>
+                    </span>
                   </div>
                   <div className="flex gap-1 shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {isManager && (
@@ -1243,7 +1291,7 @@ export default function ProjectsPage() {
                 {project.description && (
                   <p className="text-xs text-zinc-500 mb-3 line-clamp-2">{project.description}</p>
                 )}
-                <div className="grid grid-cols-5 gap-3 text-xs">
+                <div className="grid grid-cols-7 gap-3 text-xs">
                   <div>
                     <p className="text-zinc-500 text-[11px]">项目价值</p>
                     <p className="font-semibold text-sm">{project.value ? `¥${project.value.toLocaleString()}` : '-'}</p>
@@ -1263,6 +1311,14 @@ export default function ProjectsPage() {
                   <div>
                     <p className="text-zinc-500 text-[11px]">成交日期</p>
                     <p className={`font-semibold text-sm ${project.signed_at ? 'text-emerald-600' : ''}`}>{project.signed_at ? new Date(project.signed_at).toLocaleDateString('zh-CN') : '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 text-[11px]">客户来源</p>
+                    <p className="font-semibold text-sm">{project.customer_source ? (findCascadeLabel(customerSourceOptions, project.customer_source) || (customerSourceOptions.length > 0 ? project.customer_source : '-')) : '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 text-[11px]">行业归属</p>
+                    <p className="font-semibold text-sm">{project.industry ? (findCascadeLabel(industryOptions, project.industry) || (industryOptions.length > 0 ? project.industry : '-')) : '-'}</p>
                   </div>
                 </div>
                 {project.task_summary && project.task_summary.total > 0 && (
@@ -1285,12 +1341,11 @@ export default function ProjectsPage() {
             description: '',
             project_id: '',
             priority: 'medium',
-            due_date: '',
-            status: 'pending'
+            due_date: ''
           })
         }
       }}>
-        <DialogContent className="rounded-2xl shadow-xl border-0">
+        <DialogContent className="max-w-[32rem] rounded-2xl shadow-xl border-0">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">添加新任务</DialogTitle>
           </DialogHeader>
@@ -1301,8 +1356,8 @@ export default function ProjectsPage() {
                 id="task-title"
                 value={taskFormData.title}
                 onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
-                placeholder="例如：完成项目方案"
-                className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                placeholder="例如：给客户发送报价单"
+                className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
               />
             </div>
 
@@ -1321,46 +1376,48 @@ export default function ProjectsPage() {
                 id="task-description"
                 value={taskFormData.description}
                 onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
-                placeholder="任务的具体内容..."
+                placeholder="任务的详细信息..."
                 className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400 resize-none"
                 rows={3}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-[7rem_1fr] gap-4">
               <div>
                 <Label htmlFor="task-priority" className="text-sm font-medium text-zinc-700">优先级</Label>
                 <Select value={taskFormData.priority} onValueChange={(value) => setTaskFormData({ ...taskFormData, priority: value })}>
-                  <SelectTrigger id="task-priority" className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
+                  <SelectTrigger id="task-priority" className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">低优先级</SelectItem>
-                    <SelectItem value="medium">中优先级</SelectItem>
-                    <SelectItem value="high">高优先级</SelectItem>
+                    <SelectItem value="low">低</SelectItem>
+                    <SelectItem value="medium">中</SelectItem>
+                    <SelectItem value="high">高</SelectItem>
                     <SelectItem value="urgent">紧急</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <Label htmlFor="task-due-date" className="text-sm font-medium text-zinc-700">截止日期</Label>
-                <Input
-                  id="task-due-date"
-                  type="datetime-local"
-                  value={taskFormData.due_date}
-                  onChange={(e) => setTaskFormData({ ...taskFormData, due_date: e.target.value })}
-                  className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
-                />
+                <div className="relative mt-2">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                  <Input
+                    id="task-due-date"
+                    type="datetime-local"
+                    value={taskFormData.due_date}
+                    onChange={(e) => setTaskFormData({ ...taskFormData, due_date: e.target.value })}
+                    className="pl-9 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" onClick={() => setTaskDialogOpen(false)} className="rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-50">
+            <div className="flex justify-end gap-2.5 pt-2">
+              <Button type="button" variant="cancel" onClick={() => setTaskDialogOpen(false)}>
                 取消
               </Button>
-              <Button type="submit" className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full">
-                创建任务
+              <Button type="submit">
+                创建
               </Button>
             </div>
           </form>
@@ -1387,15 +1444,14 @@ export default function ProjectsPage() {
               existingStages={selectedProjectSettlements}
               projectValue={selectedProjectValue}
               onStagesChange={async () => {
-                // 重新加载所有项目数据以获取最新的结算汇总信息
                 try {
-                  const projectsData = await getProjects()
+                  const projectsData = await getProjects({ teamView: viewMode === 'team' })
                   setProjects(projectsData)
-
-                  // 同时更新结算段数据
+                  const map = new Map<string, any[]>()
+                  projectsData.forEach((p: any) => map.set(p.id, p._settlements || []))
+                  setSettlementsMap(map)
                   if (selectedProjectId) {
-                    const settlements = await getSettlementStages(selectedProjectId)
-                    setSelectedProjectSettlements(settlements)
+                    setSelectedProjectSettlements(map.get(selectedProjectId) || [])
                   }
                 } catch (error) {
                   console.error('重新加载数据失败:', error)

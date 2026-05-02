@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '@/lib/supabase/queries'
@@ -16,6 +16,10 @@ import type { Customer } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
 import { useTeamView } from '@/hooks/useTeamView'
 import { AssignDialog } from '@/components/admin/AssignDialog'
+import { DictSelect } from '@/components/ui/dict-select'
+import { useUser } from '@/context/UserContext'
+import { useDictionary, useDictionaryActions } from '@/context/DictionaryContext'
+import { PageLoading } from '@/components/ui/page-loading'
 
 export default function CustomersPage() {
   const router = useRouter()
@@ -25,9 +29,10 @@ export default function CustomersPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assignTarget, setAssignTarget] = useState<string | null>(null)
-  const [isManager, setIsManager] = useState(false)
-  const [isSalesRep, setIsSalesRep] = useState(false)
-  const [dataScope, setDataScope] = useState<'own' | 'team'>('own')
+  const me = useUser()
+  const isManager = me?.role === 'super_admin' || me?.role === 'sales_manager'
+  const isSalesRep = me?.role === 'sales_rep'
+  const dataScope: 'own' | 'team' = me?.dataScope ?? 'own'
   const { viewMode, toggle } = useTeamView()
   const [formData, setFormData] = useState({
     name: '',
@@ -36,14 +41,13 @@ export default function CustomersPage() {
     phone: '',
     notes: ''
   })
-
-  useEffect(() => {
-    fetch('/api/me').then(r => r.json()).then(d => {
-      setIsManager(d.role === 'super_admin' || d.role === 'sales_manager')
-      setIsSalesRep(d.role === 'sales_rep')
-      setDataScope(d.dataScope ?? 'own')
-    })
-  }, [])
+  const companyEntries = useDictionary('company')
+  const companyOptions = useMemo(
+    () => companyEntries.filter(e => e.is_active).map(e => ({ key: e.key, label: e.label })),
+    [companyEntries]
+  )
+  const { reloadCategory } = useDictionaryActions()
+  const [companyLoading, setCompanyLoading] = useState(false)
 
   const loadCustomers = useCallback(async () => {
     try {
@@ -94,6 +98,7 @@ export default function CustomersPage() {
             body: JSON.stringify({ type: 'create_customer', payload }),
           })
           toast('已提交审批，等待经理审核')
+          window.dispatchEvent(new Event('refresh-bell'))
         } else {
           // 创建新客户
           await createCustomer(payload)
@@ -136,7 +141,7 @@ export default function CustomersPage() {
   }, [dialogOpen])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这个客户吗？相关的项目和任务也会被删除。')) {
+    if (!confirm('确定要删除这个客户吗？关联项目的客户信息将被清空，项目本身不会被删除。')) {
       return
     }
 
@@ -149,43 +154,77 @@ export default function CustomersPage() {
     }
   }
 
+  // 创建新公司字典条目
+  const handleCreateCompany = async (label: string) => {
+    setCompanyLoading(true)
+    try {
+      const key = label.toLowerCase().replace(/\s+/g, '_').replace(/[^\w\u4e00-\u9fa5]/g, '')
+      const res = await fetch('/api/admin/dictionary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'company',
+          key,
+          label,
+          module: 'customer',
+          field_key: 'company',
+          sort_order: companyOptions.length,
+          is_active: true,
+          level: 1,
+        }),
+      })
+      if (res.ok) {
+        reloadCategory('company')
+        setFormData(prev => ({ ...prev, company: label }))
+        toast.success('公司已添加到字典')
+      }
+    } catch {
+      // 静默失败，仍允许使用输入的名称
+      setFormData(prev => ({ ...prev, company: label }))
+    } finally {
+      setCompanyLoading(false)
+    }
+  }
+
   if (loading) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-20">
-          <div className="text-zinc-400 text-sm">加载中...</div>
-        </div>
-      </div>
-    )
+    return <PageLoading variant="cards" />
   }
 
   return (
     <div className="p-8">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">客户管理</h1>
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-3 items-center -translate-y-1">
           {dataScope === 'team' && (
-            <button
-              onClick={toggle}
-              className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-400"
-            >
-              {viewMode === 'mine' ? '查看全团队' : '只看我的'}
-            </button>
+            <div className="inline-flex items-center bg-zinc-100 rounded-full p-1 h-9 whitespace-nowrap shadow-sm">
+              <button
+                onClick={() => viewMode !== 'mine' && toggle()}
+                className={`h-7 px-4 text-xs font-medium rounded-full transition-all duration-200 ${viewMode === 'mine' ? 'bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'text-zinc-500 hover:text-zinc-800'}`}
+              >
+                只看我的
+              </button>
+              <button
+                onClick={() => viewMode !== 'team' && toggle()}
+                className={`h-7 px-4 text-xs font-medium rounded-full transition-all duration-200 ${viewMode === 'team' ? 'bg-white text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'text-zinc-500 hover:text-zinc-800'}`}
+              >
+                查看全团队
+              </button>
+            </div>
           )}
           <Button
             onClick={() => setImportDialogOpen(true)}
-            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm"
+            className="h-9 shadow-sm"
           >
             <Upload className="w-4 h-4 mr-2" />
             批量导入
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-sm">
+              <Button className="h-9 shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />
                 添加客户
               </Button>
@@ -207,12 +246,17 @@ export default function CustomersPage() {
               </div>
               <div>
                 <Label htmlFor="company" className="text-sm font-medium text-zinc-700">公司名称</Label>
-                <Input
-                  id="company"
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  placeholder="某某公司"
-                  className="mt-2 border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                <DictSelect
+                  value={companyOptions.find(o => o.label === formData.company)?.key || ''}
+                  onChange={(key) => {
+                    const opt = companyOptions.find(o => o.key === key)
+                    setFormData({ ...formData, company: opt?.label || '' })
+                  }}
+                  options={companyOptions}
+                  placeholder="搜索或选择公司"
+                  className="mt-2"
+                  allowCreate
+                  onCreate={handleCreateCompany}
                 />
               </div>
               <div>
@@ -247,10 +291,10 @@ export default function CustomersPage() {
                 />
               </div>
               <div className="flex justify-end gap-2.5 pt-2">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="border-zinc-200 text-zinc-700 hover:bg-zinc-50">
+                <Button type="button" variant="cancel" onClick={() => setDialogOpen(false)}>
                   取消
                 </Button>
-                <Button type="submit" className="bg-zinc-900 text-white hover:bg-zinc-800">{editingId ? '保存' : '创建'}</Button>
+                <Button type="submit">{editingId ? '保存' : '创建'}</Button>
               </div>
             </form>
           </DialogContent>
@@ -277,9 +321,11 @@ export default function CustomersPage() {
                 <CardTitle className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-zinc-900">{customer.name}</h3>
-                    {customer.company && (
-                      <p className="text-sm text-zinc-500 mt-1">{customer.company}</p>
-                    )}
+                    <div className="flex items-center gap-2 mt-1 min-h-[20px]">
+                      {customer.company && (
+                        <span className="text-sm text-zinc-500">{customer.company}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {isManager && (
