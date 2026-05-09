@@ -1,5 +1,5 @@
 // 通用页面加载骨架：标题占位 + 卡片网格，与系统 rounded-2xl/zinc 调子一致
-export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 'settings' | 'two-column' | 'cards' | 'card-list' | 'approvals' }) {
+export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 'settings' | 'two-column' | 'cards' | 'card-list' | 'approvals' | 'updates' | 'users' }) {
   // 设置页：标题 + 多个堆叠卡片
   if (variant === 'settings') {
     return (
@@ -74,13 +74,19 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
   // 单列卡片列表：项目管理 / 审批 等行式卡片页
   if (variant === 'card-list') {
     return (
-      <div className="p-8 animate-pulse">
-        <div className="flex items-end justify-between mb-6">
+      <div className="p-4 md:p-8 animate-pulse">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
           <div>
             <div className="h-9 w-32 rounded-2xl bg-zinc-200/70" />
             <div className="mt-2 h-5 w-56 rounded-full bg-zinc-200/50" />
           </div>
-          <div className="flex gap-3 -translate-y-1">
+          <div className="flex gap-3 items-center flex-wrap -translate-y-1">
+            <div className="h-9 w-56 rounded-full bg-zinc-200/40" />
+            <div className="h-9 w-16 rounded-full bg-zinc-200/40" />
+            <div className="inline-flex items-center bg-zinc-100 rounded-full p-1 h-9 gap-1 shadow-sm">
+              <div className="h-7 w-20 bg-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-full" />
+              <div className="h-7 w-20 bg-transparent rounded-full" />
+            </div>
             <div className="h-9 w-24 rounded-full bg-zinc-200/60" />
             <div className="h-9 w-24 rounded-full bg-zinc-200/60" />
           </div>
@@ -125,7 +131,11 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
             <div className="h-9 w-32 rounded-2xl bg-zinc-200/70" />
             <div className="mt-2 h-5 w-56 rounded-full bg-zinc-200/50" />
           </div>
-          <div className="flex gap-3 -translate-y-1">
+          <div className="flex gap-3 items-center -translate-y-1">
+            <div className="inline-flex items-center bg-zinc-100 rounded-full p-1 h-9 gap-1 shadow-sm">
+              <div className="h-7 w-20 bg-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-full" />
+              <div className="h-7 w-20 bg-transparent rounded-full" />
+            </div>
             <div className="h-9 w-24 rounded-full bg-zinc-200/60" />
             <div className="h-9 w-24 rounded-full bg-zinc-200/60" />
           </div>
@@ -279,26 +289,182 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
     )
   }
 
-  // list
+  // updates（项目进展表格：项目名称 | 结算状态 | 最新进展 | 操作）
+  if (variant === 'updates') {
+    return (
+      <div className="p-8 animate-pulse">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <div className="h-9 w-32 rounded-2xl bg-zinc-200/70" />
+            <div className="mt-2 h-5 w-72 rounded-full bg-zinc-200/50" />
+          </div>
+          <div className="flex items-center gap-3 -translate-y-1">
+            <div className="h-9 w-56 rounded-full bg-zinc-200/40" />
+            <div className="h-9 w-20 rounded-full bg-zinc-200/40" />
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <thead className="bg-white border-b border-zinc-200">
+                <tr>
+                  <th className="text-left py-4 px-4 w-[220px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                  <th className="text-left py-4 px-4 w-[210px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                  <th className="text-left py-4 px-4 w-[350px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                  <th className="text-right py-4 px-4 w-[120px]"><div className="h-3 w-10 rounded-full bg-zinc-200/50 ml-auto" /></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="py-3 px-4">
+                      <div className="space-y-1.5">
+                        <div className="h-3 w-1/2 rounded-full bg-zinc-200/40" />
+                        <div className="h-3.5 w-3/4 rounded-full bg-zinc-200/60" />
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="h-5 w-14 rounded-full bg-amber-100/60" />
+                        <div className="h-5 w-14 rounded-full bg-amber-100/60" />
+                        <div className="h-5 w-14 rounded-full bg-amber-100/60" />
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="space-y-1.5">
+                        <div className="h-3 w-1/3 rounded-full bg-zinc-200/40" />
+                        <div className="h-3.5 w-2/3 rounded-full bg-zinc-200/40" />
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // users（成员管理表格：邮箱 | 角色 | 数据范围 | 审批抄送 | 状态 | 加入时间 | 操作）
+  if (variant === 'users') {
+    return (
+      <div className="p-8 animate-pulse">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <div className="h-9 w-32 rounded-2xl bg-zinc-200/70" />
+            <div className="mt-2 h-5 w-56 rounded-full bg-zinc-200/50" />
+          </div>
+          <div className="h-9 w-24 rounded-full bg-zinc-200/60 -translate-y-1" />
+        </div>
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col />
+              <col className="w-56" />
+              <col className="w-32" />
+              <col className="w-32" />
+              <col className="w-32" />
+              <col className="w-32" />
+              <col className="w-32" />
+            </colgroup>
+            <thead className="bg-white border-b border-zinc-200">
+              <tr>
+                <th className="text-left px-4 py-4 text-xs font-medium text-zinc-500 uppercase"><div className="h-3 w-12 rounded-full bg-zinc-200/50" /></th>
+                <th className="text-left px-4 py-4 text-xs font-medium text-zinc-500 uppercase"><div className="h-3 w-12 rounded-full bg-zinc-200/50" /></th>
+                <th className="text-left px-4 py-4 text-xs font-medium text-zinc-500 uppercase"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                <th className="text-left px-4 py-4 text-xs font-medium text-zinc-500 uppercase"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                <th className="text-left px-4 py-4 text-xs font-medium text-zinc-500 uppercase"><div className="h-3 w-12 rounded-full bg-zinc-200/50" /></th>
+                <th className="text-left px-4 py-4 text-xs font-medium text-zinc-500 uppercase"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                <th className="text-left px-4 py-4 text-xs font-medium text-zinc-500 uppercase"><div className="h-3 w-12 rounded-full bg-zinc-200/50" /></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3 truncate"><div className="h-3.5 w-3/4 rounded-full bg-zinc-200/60" /></td>
+                  <td className="px-4 py-3 whitespace-nowrap"><div className="h-8 w-32 rounded-full bg-zinc-200/40" /></td>
+                  <td className="px-4 py-3 whitespace-nowrap"><div className="h-3.5 w-16 rounded-full bg-zinc-200/40" /></td>
+                  <td className="px-4 py-3 whitespace-nowrap"><div className="h-5 w-9 rounded-full bg-zinc-200/50" /></td>
+                  <td className="px-4 py-3 whitespace-nowrap"><div className="h-5 w-14 rounded-full bg-emerald-100/60" /></td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap"><div className="h-3 w-20 rounded-full bg-zinc-200/40" /></td>
+                  <td className="px-4 py-3 whitespace-nowrap"><div className="h-7 w-14 rounded-full bg-zinc-200/30" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  // list（任务管理表格：状态 | 任务标题 | 关联项目 | 优先级 | 截止日期 | 操作）
   return (
     <div className="p-8 animate-pulse">
       <div className="mb-6 flex items-end justify-between">
         <div>
-          <div className="h-9 w-40 rounded-2xl bg-zinc-200/70" />
-          <div className="mt-2 h-5 w-64 rounded-full bg-zinc-200/50" />
+          <div className="h-9 w-32 rounded-2xl bg-zinc-200/70" />
+          <div className="mt-2 h-5 w-56 rounded-full bg-zinc-200/50" />
         </div>
-        <div className="h-9 w-28 rounded-full bg-zinc-200/60 -translate-y-1" />
+        <div className="flex items-center gap-3 -translate-y-1">
+          <div className="h-9 w-56 rounded-full bg-zinc-200/40" />
+          <div className="inline-flex items-center bg-zinc-100 rounded-full p-1 h-9 gap-1 shadow-sm">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className={`h-7 ${i === 0 ? 'w-16 bg-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'w-14 bg-transparent'} rounded-full`} />
+            ))}
+          </div>
+          <div className="h-9 w-24 rounded-full bg-zinc-200/60" />
+        </div>
       </div>
       <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-        <div className="h-12 border-b border-zinc-100 bg-zinc-50/40" />
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-14 border-b border-zinc-50 px-5 flex items-center gap-3">
-            <div className="h-3 w-1/4 rounded-full bg-zinc-200/60" />
-            <div className="h-3 w-1/5 rounded-full bg-zinc-200/40" />
-            <div className="h-3 w-1/6 rounded-full bg-zinc-200/40" />
-            <div className="h-3 w-1/12 rounded-full bg-zinc-200/40 ml-auto" />
-          </div>
-        ))}
+        <table className="w-full table-fixed">
+          <thead className="bg-white border-b border-zinc-200 rounded-t-2xl">
+            <tr>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-12 whitespace-nowrap rounded-tl-2xl"></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[360px] whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[22rem] whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap"><div className="h-3 w-12 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-44 whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-right text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap rounded-tr-2xl"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i}>
+                <td className="px-4 py-3"><div className="h-4 w-4 rounded bg-zinc-200/50" /></td>
+                <td className="px-4 py-3">
+                  <div className="space-y-1.5">
+                    <div className="h-3.5 w-3/4 rounded-full bg-zinc-200/60" />
+                    <div className="h-2.5 w-1/2 rounded-full bg-zinc-200/40" />
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-1/3 rounded-full bg-zinc-200/40" />
+                    <div className="h-3.5 w-2/3 rounded-full bg-zinc-200/50" />
+                  </div>
+                </td>
+                <td className="px-4 py-3"><div className="h-5 w-14 rounded-full bg-zinc-200/50" /></td>
+                <td className="px-4 py-3"><div className="h-3 w-20 rounded-full bg-zinc-200/40" /></td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-1">
+                    <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                    <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                    <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

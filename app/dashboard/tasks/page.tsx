@@ -303,8 +303,8 @@ export default function TasksPage() {
             </button>
           </div>
 
-          <Button disabled={projects.length === 0} onClick={() => setDialogOpen(true)} className="h-9 shadow-sm">
-            <Plus className="w-4 h-4 mr-2" />添加任务
+          <Button onClick={() => { if (projects.length === 0) { toast.error('请先创建项目'); return } setDialogOpen(true) }} className="h-9 shadow-sm">
+            <Plus className="w-4 h-4 mr-2 shrink-0" />添加任务
           </Button>
         </div>
       </div>

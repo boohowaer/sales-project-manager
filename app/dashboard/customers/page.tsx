@@ -42,10 +42,18 @@ export default function CustomersPage() {
     notes: ''
   })
   const companyEntries = useDictionary('company')
-  const companyOptions = useMemo(
-    () => companyEntries.filter(e => e.is_active).map(e => ({ key: e.key, label: e.label })),
-    [companyEntries]
-  )
+  const buildCascade = (entries: any[]) => {
+    const active = entries.filter(e => e.is_active)
+    const parents = active.filter((e: any) => !e.parent_id || e.level === 1)
+    return parents.map((parent: any) => ({
+      key: parent.key,
+      label: parent.label,
+      children: active
+        .filter((c: any) => c.parent_id === parent.id)
+        .map((c: any) => ({ key: c.key, label: c.label })),
+    }))
+  }
+  const companyOptions = useMemo(() => buildCascade(companyEntries), [companyEntries])
   const { reloadCategory } = useDictionaryActions()
   const [companyLoading, setCompanyLoading] = useState(false)
 
@@ -247,14 +255,16 @@ export default function CustomersPage() {
               <div>
                 <Label htmlFor="company" className="text-sm font-medium text-zinc-700">公司名称</Label>
                 <DictSelect
-                  value={companyOptions.find(o => o.label === formData.company)?.key || ''}
+                  value={companyOptions.flatMap(o => [o, ...(o.children || [])]).find(o => o.label === formData.company)?.key || ''}
                   onChange={(key) => {
-                    const opt = companyOptions.find(o => o.key === key)
+                    const all = companyOptions.flatMap(o => [o, ...(o.children || [])])
+                    const opt = all.find(o => o.key === key)
                     setFormData({ ...formData, company: opt?.label || '' })
                   }}
                   options={companyOptions}
                   placeholder="搜索或选择公司"
                   className="mt-2"
+                  cascade
                   allowCreate
                   onCreate={handleCreateCompany}
                 />

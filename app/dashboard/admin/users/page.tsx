@@ -16,7 +16,7 @@ export default function UsersPage() {
   useEffect(() => { ensureMembers() }, [ensureMembers])
 
   if (!membersLoaded) {
-    return <PageLoading variant="list" />
+    return <PageLoading variant="users" />
   }
 
   return (

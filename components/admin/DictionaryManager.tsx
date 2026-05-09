@@ -19,7 +19,7 @@ const MODULES = [
     label: '客户信息',
     icon: Users,
     fields: [
-      { key: 'company', label: '公司名称', cascade: false },
+      { key: 'company', label: '公司名称', cascade: true },
       { key: 'customer_source', label: '客户来源', cascade: true },
     ]
   },

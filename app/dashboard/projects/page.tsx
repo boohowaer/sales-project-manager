@@ -647,21 +647,21 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* 页面标题 */}
-      <div className="flex items-end justify-between mb-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">项目管理</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 tracking-tight">项目管理</h1>
           <p className="mt-2 text-zinc-500 text-sm">管理您的所有销售项目</p>
         </div>
-        <div className="flex gap-3 items-center -translate-y-1">
+        <div className="flex gap-3 items-center flex-wrap -translate-y-1">
           <div className="relative flex items-center h-9">
             <Search className="w-4 h-4 text-zinc-400 absolute left-4 pointer-events-none" />
             <Input
               placeholder="搜索项目或客户..."
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              className="h-9 w-56 pl-10 pr-4 rounded-full bg-transparent border-zinc-200 focus:border-zinc-300 placeholder:text-zinc-400 text-sm"
+              className="h-9 w-full md:w-56 pl-10 pr-4 rounded-full bg-transparent border-zinc-200 focus:border-zinc-300 placeholder:text-zinc-400 text-sm"
             />
           </div>
           <Button
@@ -740,7 +740,7 @@ export default function ProjectsPage() {
             </div>
           </DialogHeader>
 
-          <div className={`grid ${viewMode === 'team' && teamMembers.length > 0 ? 'grid-cols-8' : 'grid-cols-7'} gap-4 px-2`}>
+          <div className={`grid ${viewMode === 'team' && teamMembers.length > 0 ? 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-8' : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7'} gap-4 px-2`}>
             {/* 项目状态 */}
             <div>
               <Label className="text-xs font-medium text-zinc-700 mb-2 block">项目状态</Label>
@@ -948,7 +948,7 @@ export default function ProjectsPage() {
               {/* 基本信息 */}
               <div>
                 <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">基本信息</div>
-                <div className="grid grid-cols-[1.6fr_1.2fr_0.6fr_0.6fr] gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.6fr_1.2fr_0.6fr_0.6fr] gap-5">
                   <div>
                     <Label htmlFor="name" className="text-sm font-medium text-zinc-700">项目名称 *</Label>
                     <Input

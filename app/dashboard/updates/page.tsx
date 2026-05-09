@@ -491,7 +491,7 @@ export default function UpdatesPage() {
   }), [projects, searchKeyword, filterProjectStatus, filterContractStatus, filterAcceptedStatus, filterInvoicedStatus, filterPaidStatus, filterBelongYear, filterMilestone, settlementsMap])
 
   if (loading) {
-    return <PageLoading variant="list" />
+    return <PageLoading variant="updates" />
   }
 
   return (

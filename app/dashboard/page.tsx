@@ -12,8 +12,8 @@ import { useTasks } from '@/context/TasksContext'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 
-function CircularProgress({ pct }: { pct: number }) {
-  const size = 160
+function CircularProgress({ pct, size: propSize }: { pct: number; size?: number }) {
+  const size = propSize ?? 160
   const r = 62
   const circ = 2 * Math.PI * r
   const arcLength = 0.75 * circ
@@ -174,15 +174,15 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="p-8 max-w-[1600px]">
-      <div className="mb-6 flex items-end justify-between">
+    <div className="p-4 md:p-8 max-w-[1600px]">
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">仪表板</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 tracking-tight">仪表板</h1>
           <p className="mt-1.5 text-sm text-zinc-500">
             {now.getFullYear()}年 · {salesGoal > 0 ? `年度目标 ¥${salesGoal.toLocaleString()}` : '未设置年度目标'}
           </p>
         </div>
-        <div className="flex items-center gap-1 -translate-y-1">
+        <div className="flex items-center gap-1 md:-translate-y-1 z-50 relative">
           <button
             onClick={() => handleQuickAction('createProject')}
             title="创建项目"
@@ -216,7 +216,7 @@ export default function DashboardPage() {
               )}
             </button>
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 max-h-[480px] overflow-y-auto bg-white rounded-2xl shadow-xl border-0 z-50">
+              <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-80 max-h-[480px] overflow-y-auto bg-white rounded-2xl shadow-xl border-0 z-[100]">
                 <div className="p-2 pt-6">
                   {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length + pendingApprovals.length + myPendingApprovals.length + pendingMembers.length) === 0 ? (
                     <div className="p-6 text-center">
@@ -439,12 +439,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {metrics.map((m) => (
           <Card key={m.label} className="rounded-2xl border-0 bg-white shadow-sm overflow-visible">
             <CardContent className="px-4 pt-4 !pb-0 flex items-center gap-1 overflow-visible min-h-[160px]">
               {m.pct !== null && (
-                <div className="shrink-0 -my-1">
+                <div className="shrink-0 -my-1 hidden sm:block">
                   <CircularProgress pct={m.pct} />
                 </div>
               )}
@@ -461,11 +461,13 @@ export default function DashboardPage() {
                   {m.tooltip && (
                     <div className="relative group">
                       <Info className="w-3 h-3 text-zinc-300 cursor-help" />
-                      <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-zinc-900 text-white text-xs rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                        <p className="font-medium mb-1.5">预期收入（Expected Revenue）</p>
-                        <p className="text-zinc-300">基于项目成功概率的加权预期收入。计算公式：Σ(项目价值 × 成功概率%)</p>
-                        <p className="text-zinc-400 mt-2">例如：¥100万项目 × 50%概率 = ¥50万预期收入</p>
-                        <div className="absolute -top-1.5 left-4 w-2.5 h-2.5 bg-zinc-900 transform rotate-45"></div>
+                      <div className="absolute left-0 top-full mt-2 w-72 bg-zinc-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                        <div className="absolute -top-1.5 left-4 w-3 h-3 bg-zinc-900" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
+                        <div className="p-3 text-white text-xs">
+                          <p className="font-medium mb-1.5">预期收入（Expected Revenue）</p>
+                          <p className="text-zinc-300">基于项目成功概率的加权预期收入。计算公式：Σ(项目价值 × 成功概率%)</p>
+                          <p className="text-zinc-400 mt-2">例如：¥100万项目 × 50%概率 = ¥50万预期收入</p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -479,7 +481,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-[1fr_360px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         <div className="space-y-5">
           <h2 className="text-base font-semibold text-zinc-900">
             未来30天关注节点
