@@ -43,11 +43,11 @@ export function SidebarNavigation({ navigation }: { navigation: NavigationItem[]
 
   useEffect(() => {
     if (!hasPendingBadge) return
-    fetch('/api/approvals')
+    fetch('/api/approvals?pending_for_me=true')
       .then(r => r.json())
       .then((data: unknown) => {
-        if (Array.isArray(data)) {
-          setPendingCount(data.filter((r: any) => r.status === 'pending').length)
+        if (data && typeof data === 'object' && 'count' in data) {
+          setPendingCount((data as { count: number }).count)
         }
       })
       .catch(() => {})

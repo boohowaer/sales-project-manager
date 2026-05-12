@@ -15,6 +15,18 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const mine = searchParams.get('mine') === 'true'
+  const pendingForMe = searchParams.get('pending_for_me') === 'true'
+
+  if (pendingForMe) {
+    const all = await getAllRequests(ctx.teamId)
+    const pending = all.filter(r => {
+      if (r.status !== 'pending') return false
+      if (ctx.role === 'sales_manager') return r.current_step === 1
+      if (ctx.role === 'super_admin') return r.current_step === r.total_steps
+      return false
+    })
+    return NextResponse.json({ count: pending.length })
+  }
 
   if (mine) {
     const requests = await getMyRequests(ctx.userId)

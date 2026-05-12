@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { DatePicker } from '@/components/ui/date-picker'
-import { Pencil, Coins } from 'lucide-react'
+import { Pencil, Coins, Info } from 'lucide-react'
 import { getCustomers, updateProject, getSettlementStages } from '@/lib/supabase/queries'
 import { SettlementStagesManager } from '@/components/projects/SettlementStagesManager'
 import { DictSelect } from '@/components/ui/dict-select'
@@ -437,13 +437,25 @@ export function ProjectDetailModal({ project, open, onClose, onUpdated, onDelete
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-zinc-700">成交日期</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-sm font-medium text-zinc-700">成交日期</Label>
+                    <div className="relative group">
+                      <Info className="w-3 h-3 text-zinc-300 cursor-help" />
+                      <div className="absolute left-0 top-full mt-2 w-72 bg-zinc-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                        <div className="absolute -top-1.5 left-4 w-3 h-3 bg-zinc-900" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
+                        <div className="p-3 text-white text-xs">
+                          <p className="font-medium mb-1.5">成交日期</p>
+                          <p className="text-zinc-300">代表收到开工函或合同签约的日期，用于统计本月新增签约金额。</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <DatePicker
                     value={formData.signed_at}
                     onChange={v => setFormData({ ...formData, signed_at: v })}
                     placeholder="选择成交日期"
                     className="mt-2"
-                    disabled={!formData.contract_signed}
+                    disabled={!formData.contract_signed && !formData.has_start_notice}
                   />
                 </div>
               </div>
