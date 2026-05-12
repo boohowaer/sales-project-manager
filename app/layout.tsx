@@ -6,7 +6,7 @@ import { Poppins } from "next/font/google";
 
 // 在 hydration 前同步应用字体设置：必须以原生 <script> 形式输出到 SSR HTML，
 // 让浏览器解析到时立即执行（next/script 的 beforeInteractive 在 App Router 中不保证 paint 前执行）
-const fontInitScript = `(function(){try{var s=localStorage.getItem('fontSettings');var f=s?JSON.parse(s):null;if(f&&f.fontFamily)document.documentElement.style.fontFamily=f.fontFamily;document.documentElement.style.fontSize=((f&&f.fontSize)||14)+'px';}catch(e){document.documentElement.style.fontSize='14px';}})()`
+const fontInitScript = `(function(){try{var s=localStorage.getItem('fontSettings');var f=s?JSON.parse(s):null;document.documentElement.style.fontFamily=(f&&f.fontFamily)||'Poppins, system-ui';document.documentElement.style.fontSize=((f&&f.fontSize)||15)+'px';}catch(e){document.documentElement.style.fontFamily='Poppins, system-ui';document.documentElement.style.fontSize='15px';}})()`
 
 const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],

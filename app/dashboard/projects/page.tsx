@@ -118,10 +118,20 @@ export default function ProjectsPage() {
   }
   const customerSourceOptions = useMemo(() => buildCascade(dicts.customer_source || []), [dicts.customer_source])
   const industryOptions = useMemo(() => buildCascade(dicts.industry || []), [dicts.industry])
-  const projectStatusOptions = useMemo(
-    () => (dicts.project_status || []).filter(e => e.is_active).map(e => ({ key: e.key, label: e.label })),
-    [dicts.project_status]
-  )
+  const DEFAULT_PROJECT_STATUS = [
+    { key: 'prospect', label: '初步接触' },
+    { key: 'qualifying', label: '需求确认' },
+    { key: 'proposal', label: '方案报价' },
+    { key: 'negotiation', label: '谈判中' },
+    { key: 'won', label: '已成交' },
+    { key: 'lost', label: '已失败' },
+    { key: 'archived', label: '已归档' },
+  ]
+
+  const projectStatusOptions = useMemo(() => {
+    const dictItems = (dicts.project_status || []).filter(e => e.is_active).map(e => ({ key: e.key, label: e.label }))
+    return dictItems.length > 0 ? dictItems : DEFAULT_PROJECT_STATUS
+  }, [dicts.project_status])
 
   // 保存筛选器状态到localStorage（合并为一次写入）
   useEffect(() => {

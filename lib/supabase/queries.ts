@@ -594,8 +594,8 @@ export async function getUserSettings(): Promise<UserSettings | null> {
       return {
         id: '',
         user_id: user.id,
-        font_family: 'Inter',
-        font_size: 14,
+        font_family: 'Poppins, system-ui',
+        font_size: 15,
         theme: 'light',
         reminder_enabled: true,
         reminder_advance_hours: 24,

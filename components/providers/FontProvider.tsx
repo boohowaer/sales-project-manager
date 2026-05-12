@@ -9,8 +9,8 @@ interface FontContextType {
 }
 
 const FontContext = createContext<FontContextType>({
-  fontFamily: 'Inter',
-  fontSize: 14
+  fontFamily: 'Poppins, system-ui',
+  fontSize: 15
 })
 
 function getLocalFontSettings(): { fontFamily: string; fontSize: number } {
@@ -19,12 +19,12 @@ function getLocalFontSettings(): { fontFamily: string; fontSize: number } {
     if (raw) {
       const f = JSON.parse(raw)
       return {
-        fontFamily: f.fontFamily || 'Inter',
-        fontSize: f.fontSize || 14,
+        fontFamily: f.fontFamily || 'Poppins, system-ui',
+        fontSize: f.fontSize || 15,
       }
     }
   } catch {}
-  return { fontFamily: 'Inter', fontSize: 14 }
+  return { fontFamily: 'Poppins, system-ui', fontSize: 15 }
 }
 
 function applyFontSettings(font: string, size: number) {
@@ -33,8 +33,8 @@ function applyFontSettings(font: string, size: number) {
 }
 
 export function FontProvider({ children }: { children: React.ReactNode }) {
-  const [fontFamily, setFontFamily] = useState('Inter')
-  const [fontSize, setFontSize] = useState(14)
+  const [fontFamily, setFontFamily] = useState('Poppins, system-ui')
+  const [fontSize, setFontSize] = useState(15)
 
   useEffect(() => {
     // 立即从 localStorage 应用，避免闪烁；layout.tsx 内联 script 在无缓存时不会设 fontFamily，这里补齐
@@ -46,8 +46,8 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
     // 再从数据库同步最新值，仅在与本地不一致时才重排，避免无谓的样式抖动
     getUserSettings().then(settings => {
       if (!settings) return
-      const font = settings.font_family || 'Inter'
-      const size = settings.font_size || 14
+      const font = settings.font_family || 'Poppins, system-ui'
+      const size = settings.font_size || 15
       if (font === local.fontFamily && size === local.fontSize) return
       setFontFamily(font)
       setFontSize(size)

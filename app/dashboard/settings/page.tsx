@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PageLoading } from '@/components/ui/page-loading'
 
 export default function SettingsPage() {
-  const [fontFamily, setFontFamily] = useState('Poppins, Inter')
+  const [fontFamily, setFontFamily] = useState('Poppins, system-ui')
   const [fontSize, setFontSize] = useState(15)
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [reminderAdvanceHours, setReminderAdvanceHours] = useState(24)
@@ -105,8 +105,7 @@ export default function SettingsPage() {
   }
 
   const fonts = [
-    { value: 'Poppins, Inter', label: 'Poppins（西文）+ 系统默认（中文）' },
-    { value: 'Inter', label: 'Inter（西文）+ 系统默认（中文）' },
+    { value: 'Poppins, system-ui', label: 'Poppins（西文）+ 系统默认（中文）' },
     { value: 'system-ui', label: '系统字体（自动匹配）' },
     { value: 'sans-serif', label: '无衬线字体' },
     { value: 'serif', label: '衬线字体' },
@@ -182,10 +181,10 @@ export default function SettingsPage() {
                   onChange={(e) => setFontSize(parseInt(e.target.value))}
                   className="mt-2 border-0"
                 />
-                <div className="flex justify-between text-sm text-zinc-500 mt-2">
-                  <span>12px（小）</span>
-                  <span>16px（标准）</span>
-                  <span>20px（大）</span>
+                <div className="relative h-5 text-sm text-zinc-500 mt-2">
+                  <span className="absolute left-0">12px（小）</span>
+                  <span className="absolute left-[37.5%] -translate-x-1/2">15px（标准）</span>
+                  <span className="absolute right-0">20px（大）</span>
                 </div>
               </div>
             </CardContent>
