@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { getDashboardData } from '@/lib/supabase/queries'
 import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { PageLoading } from '@/components/ui/page-loading'
@@ -11,6 +12,8 @@ import { Badge } from '@/components/ui/badge'
 import { useTasks } from '@/context/TasksContext'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
+
+const ProjectDetailModal = dynamic(() => import('@/components/projects/ProjectDetailModal').then(m => ({ default: m.ProjectDetailModal })), { ssr: false })
 
 function CircularProgress({ pct, size: propSize }: { pct: number; size?: number }) {
   const size = propSize ?? 160
@@ -47,6 +50,7 @@ export default function DashboardPage() {
   const hadCacheRef = useRef(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  const [selectedProject, setSelectedProject] = useState<any>(null)
   const { overdueTasks, upcomingTasks, thisWeekTasks, pendingApprovals, myPendingApprovals, pendingMembers, userSettings, loading: tasksLoading } = useTasks()
   const upcomingTaskIds = new Set(upcomingTasks.map((t: any) => t.id))
 
@@ -461,8 +465,8 @@ export default function DashboardPage() {
                   {m.tooltip && (
                     <div className="relative group">
                       <Info className="w-3 h-3 text-zinc-300 cursor-help" />
-                      <div className="absolute left-0 top-full mt-2 w-72 bg-zinc-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                        <div className="absolute -top-1.5 left-4 w-3 h-3 bg-zinc-900" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
+                      <div className="absolute left-0 top-full mt-2 w-72 bg-zinc-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50" style={{ marginLeft: '-6px' }}>
+                        <div className="absolute -top-1.5 left-[6px] w-3 h-3 bg-zinc-900" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
                         <div className="p-3 text-white text-xs">
                           <p className="font-medium mb-1.5">预期收入（Expected Revenue）</p>
                           <p className="text-zinc-300">基于项目成功概率的加权预期收入。计算公式：Σ(项目价值 × 成功概率%)</p>
@@ -489,7 +493,7 @@ export default function DashboardPage() {
           </h2>
 
           {/* 计划签约 */}
-          <Card className="rounded-2xl border-0 bg-white shadow-sm">
+          <Card className="rounded-2xl border-0 bg-white shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
@@ -510,7 +514,10 @@ export default function DashboardPage() {
                     return (
                       <div key={p.id} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-zinc-800 truncate">{p.name}</p>
+                          <button
+                            onClick={() => setSelectedProject(p)}
+                            className="text-sm font-medium text-zinc-800 truncate block text-left hover:underline underline-offset-2 decoration-zinc-400 transition-all"
+                          >{p.name}</button>
                           <p className="text-xs text-zinc-400 mt-0.5">{p.customers?.name}</p>
                         </div>
                         <div className="text-right ml-4 shrink-0">
@@ -530,7 +537,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* 计划验收 */}
-          <Card className="rounded-2xl border-0 bg-white shadow-sm">
+          <Card className="rounded-2xl border-0 bg-white shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
@@ -551,7 +558,10 @@ export default function DashboardPage() {
                     return (
                       <div key={p.id} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-zinc-800 truncate">{p.name}</p>
+                          <button
+                            onClick={() => setSelectedProject(p)}
+                            className="text-sm font-medium text-zinc-800 truncate block text-left hover:underline underline-offset-2 decoration-zinc-400 transition-all"
+                          >{p.name}</button>
                           <p className="text-xs text-zinc-400 mt-0.5">{p.customers?.name}</p>
                         </div>
                         <div className="text-right ml-4 shrink-0">
@@ -569,7 +579,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* 计划开票 */}
-          <Card className="rounded-2xl border-0 bg-white shadow-sm">
+          <Card className="rounded-2xl border-0 bg-white shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
@@ -587,7 +597,10 @@ export default function DashboardPage() {
                     return (
                       <div key={p.id} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-zinc-800 truncate">{p.name}</p>
+                          <button
+                            onClick={() => setSelectedProject(p)}
+                            className="text-sm font-medium text-zinc-800 truncate block text-left hover:underline underline-offset-2 decoration-zinc-400 transition-all"
+                          >{p.name}</button>
                           <p className="text-xs text-zinc-400 mt-0.5">{p.customers?.name}</p>
                         </div>
                         <div className="text-right ml-4 shrink-0">
@@ -611,7 +624,7 @@ export default function DashboardPage() {
             本周任务
             <span className="text-xs font-normal text-zinc-400 ml-1.5">& 已逾期任务</span>
           </h2>
-          <Card className="rounded-2xl border-0 bg-white shadow-sm">
+          <Card className="rounded-2xl border-0 bg-white shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
                 <div className="px-5 py-4 text-center">
@@ -670,6 +683,18 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {selectedProject && (
+        <ProjectDetailModal
+          project={selectedProject}
+          open={true}
+          onClose={() => setSelectedProject(null)}
+          onUpdated={updated => {
+            setProjectsData(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+            setSelectedProject(null)
+          }}
+        />
+      )}
     </div>
   )
 }

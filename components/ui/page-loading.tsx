@@ -308,10 +308,10 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
             <table className="w-full table-fixed">
               <thead className="bg-white border-b border-zinc-200">
                 <tr>
-                  <th className="text-left py-4 px-4 w-[220px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                  <th className="text-left py-4 px-4 w-[260px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
                   <th className="text-left py-4 px-4 w-[210px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
-                  <th className="text-left py-4 px-4 w-[350px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
-                  <th className="text-right py-4 px-4 w-[120px]"><div className="h-3 w-10 rounded-full bg-zinc-200/50 ml-auto" /></th>
+                  <th className="text-left py-4 px-4 w-[310px]"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+                  <th className="text-right py-4 px-4 w-[172px]"><div className="h-3 w-10 rounded-full bg-zinc-200/50 ml-auto" /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -338,10 +338,10 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center justify-end gap-1">
-                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
-                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
-                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
-                        <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                        <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
+                        <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
+                        <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
+                        <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
                       </div>
                     </td>
                   </tr>
@@ -428,12 +428,12 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
         <table className="w-full table-fixed">
           <thead className="bg-white border-b border-zinc-200 rounded-t-2xl">
             <tr>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-12 whitespace-nowrap rounded-tl-2xl"></th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[360px] whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[22rem] whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap"><div className="h-3 w-12 rounded-full bg-zinc-200/50" /></th>
-              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-44 whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
-              <th className="px-4 py-4 text-right text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap rounded-tr-2xl"></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-10 whitespace-nowrap rounded-tl-2xl"></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[240px] whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[220px] whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-20 whitespace-nowrap"><div className="h-3 w-12 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap"><div className="h-3 w-16 rounded-full bg-zinc-200/50" /></th>
+              <th className="px-4 py-4 text-right text-xs font-medium text-zinc-500 uppercase w-[172px] whitespace-nowrap rounded-tr-2xl"></th>
             </tr>
           </thead>
           <tbody>
@@ -456,9 +456,10 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
                 <td className="px-4 py-3"><div className="h-3 w-20 rounded-full bg-zinc-200/40" /></td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
-                    <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
-                    <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
-                    <div className="h-7 w-7 rounded-full bg-zinc-200/30" />
+                    <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
+                    <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
+                    <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
+                    <div className="h-8 w-8 rounded-full bg-zinc-200/30" />
                   </div>
                 </td>
               </tr>

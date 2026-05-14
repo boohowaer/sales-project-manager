@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getProjects, getCustomers, createProject, updateProject, deleteProject, createTask } from '@/lib/supabase/queries'
+import { getProjects, getCustomers, createProject, updateProject, deleteProject, createTask, getProjectWeeklyUpdates, createWeeklyUpdate, updateWeeklyUpdate } from '@/lib/supabase/queries'
 import { SettlementStagesManager } from '@/components/projects/SettlementStagesManager'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +16,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { DictSelect } from '@/components/ui/dict-select'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Pencil, Trash2, Coins, Search, Filter, X, CheckSquare, RotateCcw, Upload, UserPlus, Calendar, Info } from 'lucide-react'
+import { Plus, Pencil, Trash2, Coins, Search, Filter, X, CheckSquare, RotateCcw, Upload, UserPlus, Calendar, Info, FileText } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import type { Project, Customer } from '@/types'
@@ -177,6 +177,85 @@ export default function ProjectsPage() {
     settlement_stages: 1,
     belong_year: ''
   })
+
+  // 编辑进展弹窗状态
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+  const [updateProject, setUpdateProject] = useState<any>(null)
+  const [updateEditingId, setUpdateEditingId] = useState<string | null>(null)
+  const [updateContent, setUpdateContent] = useState('')
+
+  const getCurrentWeek = () => {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+    const monday = new Date(now.setDate(diff))
+    const year = monday.getFullYear()
+    const month = String(monday.getMonth() + 1).padStart(2, '0')
+    const day = String(monday.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const getWeekDisplay = (week: string) => {
+    if (!week) return ''
+    const [year, month, day] = week.split('-')
+    const monday = new Date(`${year}-${month}-${day}`)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    return `${monday.getMonth() + 1}月${monday.getDate()}日 - ${sunday.getMonth() + 1}月${sunday.getDate()}日`
+  }
+
+  const handleOpenUpdate = async (project: any) => {
+    setUpdateProject(project)
+    setUpdateEditingId(null)
+    setUpdateContent('')
+    try {
+      const updates = await getProjectWeeklyUpdates(project.id)
+      const currentWeek = getCurrentWeek()
+      const existing = updates.find((u: any) => u.week === currentWeek)
+      if (existing) {
+        setUpdateEditingId(existing.id)
+        setUpdateContent(existing.content || '')
+      }
+    } catch {}
+    setUpdateDialogOpen(true)
+  }
+
+  const handleSubmitUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!updateContent.trim()) { toast.error('请填写本周进展内容'); return }
+    if (!updateProject) return
+    try {
+      const currentWeek = getCurrentWeek()
+      const settlements = settlementsMap.get(updateProject.id) || []
+      const totalStages = updateProject.settlement_stages || 1
+      const acceptedCount = settlements.filter((s: any) => s.accepted).length
+      const invoicedCount = settlements.filter((s: any) => s.invoiced).length
+      const paidCount = settlements.filter((s: any) => s.paid).length
+
+      if (updateEditingId) {
+        await updateWeeklyUpdate(updateEditingId, { content: updateContent })
+        toast.success('进展更新成功')
+      } else {
+        await createWeeklyUpdate({
+          project_id: updateProject.id,
+          week: currentWeek,
+          content: updateContent,
+          contract_signed: updateProject.contract_signed,
+          settlement_accepted: acceptedCount,
+          settlement_invoiced: invoicedCount,
+          settlement_paid: paidCount,
+          settlement_total: totalStages
+        } as any)
+        toast.success('进展添加成功')
+      }
+      setUpdateDialogOpen(false)
+      setUpdateProject(null)
+      setUpdateContent('')
+      setUpdateEditingId(null)
+    } catch (error: any) {
+      toast.error(error.message || '操作失败')
+    }
+  }
 
   const initialLoadDone = useRef(false)
 
@@ -1151,8 +1230,8 @@ export default function ProjectsPage() {
                       <Label className="text-sm font-medium text-zinc-700">成交日期</Label>
                       <div className="relative group">
                         <Info className="w-3 h-3 text-zinc-300 cursor-help" />
-                        <div className="absolute left-0 top-full mt-2 w-72 bg-zinc-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                          <div className="absolute -top-1.5 left-4 w-3 h-3 bg-zinc-900" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
+                        <div className="absolute left-0 top-full mt-2 w-72 bg-zinc-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50" style={{ marginLeft: '-6px' }}>
+                          <div className="absolute -top-1.5 left-[6px] w-3 h-3 bg-zinc-900" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
                           <div className="p-3 text-white text-xs">
                             <p className="font-medium mb-1.5">成交日期</p>
                             <p className="text-zinc-300">代表收到开工函或合同签约的日期，用于统计本月新增签约金额。</p>
@@ -1239,7 +1318,7 @@ export default function ProjectsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                        className="text-zinc-600 hover:text-zinc-900"
                         onClick={() => setAssignTarget(project.id)}
                         title="分派"
                       >
@@ -1249,7 +1328,7 @@ export default function ProjectsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                      className="text-zinc-600 hover:text-zinc-900"
                       onClick={() => handleEdit(project)}
                       title="编辑项目"
                     >
@@ -1258,7 +1337,7 @@ export default function ProjectsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                      className="text-zinc-600 hover:text-zinc-900"
                       onClick={() => handleManageSettlements(project)}
                       title="结算阶段"
                     >
@@ -1267,7 +1346,16 @@ export default function ProjectsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                      className="text-zinc-600 hover:text-zinc-900"
+                      onClick={() => handleOpenUpdate(project)}
+                      title="编辑进展"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-zinc-600 hover:text-zinc-900"
                       onClick={() => handleOpenCreateTask(project.id)}
                       title="创建任务"
                     >
@@ -1276,7 +1364,7 @@ export default function ProjectsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500"
+                      className="hover:bg-red-50 text-zinc-400 hover:text-rose-500"
                       onClick={() => handleDelete(project.id)}
                       title="删除项目"
                     >
@@ -1499,6 +1587,38 @@ export default function ProjectsPage() {
           onSuccess={loadData}
         />
       ))}
+
+      {/* 编辑本周进展对话框 */}
+      <Dialog open={updateDialogOpen} onOpenChange={(open) => {
+        setUpdateDialogOpen(open)
+        if (!open) { setUpdateProject(null); setUpdateContent(''); setUpdateEditingId(null) }
+      }}>
+        <DialogContent className="max-w-2xl rounded-2xl shadow-xl border-0">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              {updateEditingId ? '编辑本周进展' : `填写本周进展 - ${updateProject?.name}`}
+              <span className="text-xs text-zinc-400 font-normal ml-2">{getWeekDisplay(getCurrentWeek())}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitUpdate} className="space-y-6">
+            <div>
+              <Label htmlFor="update-content" className="text-sm font-medium text-zinc-700">本周进展内容 *</Label>
+              <Textarea
+                id="update-content"
+                value={updateContent}
+                onChange={(e) => setUpdateContent(e.target.value)}
+                placeholder="填写本周的项目进展、关键里程碑、遇到的问题和解决方案等..."
+                rows={6}
+                className="mt-2 resize-none border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="cancel" onClick={() => setUpdateDialogOpen(false)}>取消</Button>
+              <Button type="submit">{updateEditingId ? '保存' : '提交'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* 批量导入对话框 */}
       <ImportDialog

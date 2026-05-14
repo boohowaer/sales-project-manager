@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { getTasks, getProjects, getProjectsForTaskSelect, createTask, deleteTask, shareTask, unshareTask, cleanupOldCompletedTasks } from '@/lib/supabase/queries'
+import { getTasks, getProjects, getProjectsForTaskSelect, createTask, deleteTask, shareTask, unshareTask, cleanupOldCompletedTasks, getProjectWeeklyUpdates, createWeeklyUpdate, updateWeeklyUpdate } from '@/lib/supabase/queries'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { Share2, RotateCcw, Plus, Trash2, Check, Pencil, Search, Calendar } from 'lucide-react'
+import { Share2, RotateCcw, Plus, Trash2, Check, Pencil, Search, Calendar, FileText } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -45,6 +45,80 @@ export default function TasksPage() {
   const [formData, setFormData] = useState({
     title: '', description: '', project_id: '', priority: 'medium', due_date: ''
   })
+
+  // 编辑进展弹窗状态
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+  const [updateProject, setUpdateProject] = useState<any>(null)
+  const [updateEditingId, setUpdateEditingId] = useState<string | null>(null)
+  const [updateContent, setUpdateContent] = useState('')
+
+  const getCurrentWeek = () => {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+    const monday = new Date(now.setDate(diff))
+    const year = monday.getFullYear()
+    const month = String(monday.getMonth() + 1).padStart(2, '0')
+    const day = String(monday.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const getWeekDisplay = (week: string) => {
+    if (!week) return ''
+    const [year, month, day] = week.split('-')
+    const monday = new Date(`${year}-${month}-${day}`)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    return `${monday.getMonth() + 1}月${monday.getDate()}日 - ${sunday.getMonth() + 1}月${sunday.getDate()}日`
+  }
+
+  const handleOpenUpdate = async (project: any) => {
+    if (!project?.id) return
+    setUpdateProject(project)
+    setUpdateEditingId(null)
+    setUpdateContent('')
+    try {
+      const updates = await getProjectWeeklyUpdates(project.id)
+      const currentWeek = getCurrentWeek()
+      const existing = updates.find((u: any) => u.week === currentWeek)
+      if (existing) {
+        setUpdateEditingId(existing.id)
+        setUpdateContent(existing.content || '')
+      }
+    } catch {}
+    setUpdateDialogOpen(true)
+  }
+
+  const handleSubmitUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!updateContent.trim()) { toast.error('请填写本周进展内容'); return }
+    if (!updateProject) return
+    try {
+      const currentWeek = getCurrentWeek()
+      if (updateEditingId) {
+        await updateWeeklyUpdate(updateEditingId, { content: updateContent })
+        toast.success('进展更新成功')
+      } else {
+        await createWeeklyUpdate({
+          project_id: updateProject.id,
+          week: currentWeek,
+          content: updateContent,
+          contract_signed: updateProject.contract_signed || false,
+          settlement_accepted: 0,
+          settlement_invoiced: 0,
+          settlement_paid: 0,
+          settlement_total: 1
+        } as any)
+        toast.success('进展添加成功')
+      }
+      setUpdateDialogOpen(false)
+      setUpdateProject(null)
+      setUpdateContent('')
+      setUpdateEditingId(null)
+    } catch (error: any) {
+      toast.error(error.message || '操作失败')
+    }
+  }
 
   useEffect(() => {
     // me 来自 UserContext；团队成员按需懒加载（共享 cache）
@@ -378,12 +452,12 @@ export default function TasksPage() {
               <table className="w-full table-fixed">
                 <thead className="bg-white border-b border-zinc-200 rounded-t-2xl">
                   <tr>
-                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-12 whitespace-nowrap rounded-tl-2xl">状态</th>
-                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[360px] whitespace-nowrap">任务标题</th>
-                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[22rem] whitespace-nowrap">关联项目</th>
-                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap">优先级</th>
-                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-44 whitespace-nowrap">截止日期</th>
-                    <th className="px-4 py-4 text-right text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap rounded-tr-2xl"></th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-10 whitespace-nowrap rounded-tl-2xl">状态</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[240px] whitespace-nowrap">任务标题</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-[220px] whitespace-nowrap">关联项目</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-20 whitespace-nowrap">优先级</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium text-zinc-500 uppercase w-28 whitespace-nowrap">截止日期</th>
+                    <th className="px-4 py-4 text-right text-xs font-medium text-zinc-500 uppercase w-[172px] whitespace-nowrap rounded-tr-2xl"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -454,43 +528,48 @@ export default function TasksPage() {
                           <div className="flex items-center justify-end gap-1">
                             {viewMode === 'mine' && !task._shareDirection && (
                               <>
-                                <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="编辑">
+                                <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="text-zinc-600 hover:text-zinc-900" title="编辑">
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => { setShareTaskId(task.id); setShareDialogOpen(true) }} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="同步给别人">
+                                <Button variant="ghost" size="icon" onClick={() => { setShareTaskId(task.id); setShareDialogOpen(true) }} className="text-zinc-600 hover:text-zinc-900" title="同步给别人">
                                   <Share2 className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(task.id)} className="h-8 w-8 hover:bg-red-50 text-zinc-400 hover:text-rose-500" title="删除">
+                                {task.projects?.id && (
+                                  <Button variant="ghost" size="icon" onClick={() => handleOpenUpdate(task.projects)} className="text-zinc-600 hover:text-zinc-900" title="编辑进展">
+                                    <FileText className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(task.id)} className="hover:bg-red-50 text-zinc-400 hover:text-rose-500" title="删除">
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </>
                             )}
                             {viewMode === 'mine' && task._shareDirection === 'in' && (
-                              <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="编辑">
+                              <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="text-zinc-600 hover:text-zinc-900" title="编辑">
                                 <Pencil className="w-4 h-4" />
                               </Button>
                             )}
                             {viewMode === 'shared' && task._shareDirection === 'out' && task._shareType === 'assign' && (
-                              <Button variant="ghost" size="icon" onClick={() => handleUnshare(task)} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="撤回">
+                              <Button variant="ghost" size="icon" onClick={() => handleUnshare(task)} className="text-zinc-600 hover:text-zinc-900" title="撤回">
                                 <RotateCcw className="w-4 h-4" />
                               </Button>
                             )}
                             {viewMode === 'shared' && task._shareDirection === 'out' && task._shareType === 'sync' && (
                               <>
-                                <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="编辑">
+                                <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="text-zinc-600 hover:text-zinc-900" title="编辑">
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleUnshare(task)} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="撤回">
+                                <Button variant="ghost" size="icon" onClick={() => handleUnshare(task)} className="text-zinc-600 hover:text-zinc-900" title="撤回">
                                   <RotateCcw className="w-4 h-4" />
                                 </Button>
                               </>
                             )}
                             {viewMode === 'shared' && task._shareDirection === 'in' && task._shareType === 'assign' && (
                               <>
-                                <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="编辑">
+                                <Button variant="ghost" size="icon" onClick={() => handleEdit(task)} className="text-zinc-600 hover:text-zinc-900" title="编辑">
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleToggleComplete(task)} className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900" title="完成">
+                                <Button variant="ghost" size="icon" onClick={() => handleToggleComplete(task)} className="text-zinc-600 hover:text-zinc-900" title="完成">
                                   <Check className="w-4 h-4" />
                                 </Button>
                               </>
@@ -507,6 +586,38 @@ export default function TasksPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 编辑本周进展对话框 */}
+      <Dialog open={updateDialogOpen} onOpenChange={(open) => {
+        setUpdateDialogOpen(open)
+        if (!open) { setUpdateProject(null); setUpdateContent(''); setUpdateEditingId(null) }
+      }}>
+        <DialogContent className="max-w-2xl rounded-2xl shadow-xl border-0">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              {updateEditingId ? '编辑本周进展' : `填写本周进展 - ${updateProject?.name}`}
+              <span className="text-xs text-zinc-400 font-normal ml-2">{getWeekDisplay(getCurrentWeek())}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitUpdate} className="space-y-6">
+            <div>
+              <Label htmlFor="update-content" className="text-sm font-medium text-zinc-700">本周进展内容 *</Label>
+              <Textarea
+                id="update-content"
+                value={updateContent}
+                onChange={(e) => setUpdateContent(e.target.value)}
+                placeholder="填写本周的项目进展、关键里程碑、遇到的问题和解决方案等..."
+                rows={6}
+                className="mt-2 resize-none border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="cancel" onClick={() => setUpdateDialogOpen(false)}>取消</Button>
+              <Button type="submit">{updateEditingId ? '保存' : '提交'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* 共享对话框 */}
       <Dialog open={shareDialogOpen} onOpenChange={open => { setShareDialogOpen(open); if (!open) { setShareTaskId(null); setShareToUserId(''); setShareType('sync') } }}>

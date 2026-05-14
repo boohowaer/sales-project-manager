@@ -543,10 +543,10 @@ export default function UpdatesPage() {
             <table className="w-full table-fixed">
               <thead className="bg-white border-b border-zinc-200 rounded-t-2xl">
                 <tr>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[220px] rounded-tl-2xl">项目名称</th>
+                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[260px] rounded-tl-2xl">项目名称</th>
                   <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[210px]">结算状态</th>
-                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[350px]">最新进展</th>
-                  <th className="text-right py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[120px] rounded-tr-2xl">
+                  <th className="text-left py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[310px]">最新进展</th>
+                  <th className="text-right py-4 px-4 text-xs font-medium text-zinc-500 uppercase w-[172px] rounded-tr-2xl">
                   </th>
                 </tr>
               </thead>
@@ -567,7 +567,7 @@ export default function UpdatesPage() {
                         </div>
                         <button
                           onClick={() => setSelectedProject(project)}
-                          className="font-medium text-sm truncate max-w-[220px] text-left hover:underline underline-offset-2 decoration-zinc-400 transition-all"
+                          className="font-medium text-sm truncate max-w-[260px] text-left hover:underline underline-offset-2 decoration-zinc-400 transition-all"
                         >{project.name}</button>
                       </div>
                     </td>
@@ -609,7 +609,7 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                          className="text-zinc-600 hover:text-zinc-900"
                           onClick={() => handleEditThisWeek(project)}
                           title={project.current_week_update ? '编辑本周进展' : '填写本周进展'}
                         >
@@ -618,7 +618,7 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                          className="text-zinc-600 hover:text-zinc-900"
                           onClick={() => handleOpenHistory(project)}
                           title="查看历史"
                         >
@@ -627,7 +627,7 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                          className="text-zinc-600 hover:text-zinc-900"
                           onClick={() => handleOpenCreateTask(project.id)}
                           title="创建任务"
                         >
@@ -636,7 +636,7 @@ export default function UpdatesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900"
+                          className="text-zinc-600 hover:text-zinc-900"
                           onClick={() => handleViewProjectTasks(project)}
                           title="查看任务"
                         >

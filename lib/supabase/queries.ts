@@ -890,7 +890,7 @@ export async function getDashboardData() {
 
   const projectsQuery = client
     .from('projects')
-    .select('id, name, status, value, probability, has_start_notice, contract_signed, created_at, signed_at, expected_close_date, belong_year, customers(name)')
+    .select('id, name, status, value, probability, has_start_notice, contract_signed, created_at, signed_at, expected_close_date, start_date, description, customer_source, industry, belong_year, customers(name)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
@@ -1002,10 +1002,19 @@ export async function getDashboardData() {
   const settlementsByProject = new Map<string, any[]>()
   allProjects.forEach(p => settlementsByProject.set(p.id, []))
   allSettlements.forEach(s => settlementsByProject.get(s.project_id)?.push(s))
-  const projects = allProjects.map(p => ({
-    ...p,
-    _settlements: settlementsByProject.get(p.id) || [],
-  }))
+  const projects = allProjects.map(p => {
+    const settlements = settlementsByProject.get(p.id) || []
+    return {
+      ...p,
+      _settlements: settlements,
+      settlement_summary: {
+        accepted: settlements.filter(s => s.accepted).length,
+        invoiced: settlements.filter(s => s.invoiced).length,
+        paid: settlements.filter(s => s.paid).length,
+        total: settlements.length,
+      }
+    }
+  })
 
   return { stats, projects }
 }
