@@ -5,17 +5,87 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
     return (
       <div className="p-8 max-w-4xl animate-pulse">
         <div className="mb-8 space-y-2">
-          <div className="h-9 w-32 rounded-2xl bg-zinc-200/70" />
-          <div className="h-4 w-56 rounded-full bg-zinc-200/50" />
+          <div className="h-9 w-16 rounded-2xl bg-zinc-200/70" />
+          <div className="h-4 w-40 rounded-full bg-zinc-200/50" />
         </div>
         <div className="space-y-6">
-          {['h-20', 'h-40', 'h-48', 'h-32'].map((h, i) => (
-            <div key={i} className="rounded-2xl bg-white shadow-sm p-6 space-y-4">
-              <div className="h-5 w-28 rounded-full bg-zinc-200/60" />
-              <div className="h-4 w-72 rounded-full bg-zinc-200/40" />
-              <div className={`${h} rounded-2xl bg-zinc-100/70 mt-2`} />
+          {/* 销售目标设定：3 个 label+input 组合 */}
+          <div className="rounded-2xl bg-white shadow-sm p-6 space-y-6">
+            <div className="space-y-1">
+              <div className="h-5 w-24 rounded-full bg-zinc-200/60" />
+              <div className="h-4 w-56 rounded-full bg-zinc-200/40" />
             </div>
-          ))}
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="space-y-2">
+                <div className="h-4 w-16 rounded-full bg-zinc-200/50" />
+                <div className="h-10 w-full rounded-full bg-zinc-100/70" />
+              </div>
+            ))}
+          </div>
+
+          {/* 外观设置：2 组 label+控件 */}
+          <div className="rounded-2xl bg-white shadow-sm p-6 space-y-6">
+            <div className="space-y-1">
+              <div className="h-5 w-20 rounded-full bg-zinc-200/60" />
+              <div className="h-4 w-40 rounded-full bg-zinc-200/40" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-10 rounded-full bg-zinc-200/50" />
+              <div className="h-10 w-full rounded-full bg-zinc-100/70" />
+              <div className="h-4 w-80 rounded-full bg-zinc-200/30" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-24 rounded-full bg-zinc-200/50" />
+              <div className="h-2 w-full rounded-full bg-zinc-100/70" />
+              <div className="h-4 w-full rounded-full bg-zinc-200/30" />
+            </div>
+          </div>
+
+          {/* 提醒设置：checkbox 行 + 2 组 label+select */}
+          <div className="rounded-2xl bg-white shadow-sm p-6 space-y-6">
+            <div className="space-y-1">
+              <div className="h-5 w-20 rounded-full bg-zinc-200/60" />
+              <div className="h-4 w-48 rounded-full bg-zinc-200/40" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="h-4 w-16 rounded-full bg-zinc-200/50" />
+                <div className="h-3 w-56 rounded-full bg-zinc-200/30" />
+              </div>
+              <div className="h-5 w-5 rounded bg-zinc-200/50" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-40 rounded-full bg-zinc-200/50" />
+              <div className="h-10 w-full rounded-full bg-zinc-100/70" />
+              <div className="h-3 w-44 rounded-full bg-zinc-200/30" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-20 rounded-full bg-zinc-200/50" />
+              <div className="h-10 w-full rounded-full bg-zinc-100/70" />
+              <div className="h-3 w-40 rounded-full bg-zinc-200/30" />
+            </div>
+          </div>
+
+          {/* 修改密码：2 个 input + 按钮 */}
+          <div className="rounded-2xl bg-white shadow-sm p-6 space-y-4">
+            <div className="space-y-1">
+              <div className="h-5 w-20 rounded-full bg-zinc-200/60" />
+              <div className="h-4 w-36 rounded-full bg-zinc-200/40" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-14 rounded-full bg-zinc-200/50" />
+              <div className="h-10 w-full rounded-full bg-zinc-100/70" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-20 rounded-full bg-zinc-200/50" />
+              <div className="h-10 w-full rounded-full bg-zinc-100/70" />
+            </div>
+            <div className="flex justify-end pt-2">
+              <div className="h-10 w-20 rounded-full bg-zinc-200/50" />
+            </div>
+          </div>
+
+          {/* 保存按钮 */}
           <div className="flex justify-end">
             <div className="h-10 w-24 rounded-full bg-zinc-200/60" />
           </div>

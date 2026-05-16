@@ -601,6 +601,8 @@ export async function getUserSettings(): Promise<UserSettings | null> {
         reminder_advance_hours: 24,
         milestone_reminder_days: 7,
         sales_goal: null,
+        sales_goal_base: null,
+        sales_goal_stretch: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }

@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [reminderAdvanceHours, setReminderAdvanceHours] = useState(24)
   const [milestoneReminderDays, setMilestoneReminderDays] = useState(7)
   const [salesGoal, setSalesGoal] = useState('')
+  const [salesGoalBase, setSalesGoalBase] = useState('')
+  const [salesGoalStretch, setSalesGoalStretch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' })
@@ -46,6 +48,8 @@ export default function SettingsPage() {
         setReminderAdvanceHours(settings.reminder_advance_hours)
         setMilestoneReminderDays(settings.milestone_reminder_days ?? 7)
         setSalesGoal(settings.sales_goal ? settings.sales_goal.toString() : '')
+        setSalesGoalBase(settings.sales_goal_base ? settings.sales_goal_base.toString() : '')
+        setSalesGoalStretch(settings.sales_goal_stretch ? settings.sales_goal_stretch.toString() : '')
       }
     } catch (error: any) {
       toast.error('加载设置失败')
@@ -90,7 +94,9 @@ export default function SettingsPage() {
         reminder_enabled: reminderEnabled,
         reminder_advance_hours: reminderAdvanceHours,
         milestone_reminder_days: milestoneReminderDays,
-        sales_goal: salesGoal ? parseFloat(salesGoal) : null
+        sales_goal: salesGoal ? parseFloat(salesGoal) : null,
+        sales_goal_base: salesGoalBase ? parseFloat(salesGoalBase) : null,
+        sales_goal_stretch: salesGoalStretch ? parseFloat(salesGoalStretch) : null,
       })
       toast.success('设置保存成功')
       // 保存成功后应用字体设置并更新缓存
@@ -127,17 +133,39 @@ export default function SettingsPage() {
           <Card className="rounded-2xl shadow-sm border-0 bg-white">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">销售目标设定</CardTitle>
-              <CardDescription className="text-sm text-zinc-500">设置您的销售目标，用于在仪表板中显示达成进度</CardDescription>
+              <CardDescription className="text-sm text-zinc-500">设置您的销售目标线，用于在仪表板中显示达成进度</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <Label htmlFor="sales-goal" className="text-sm font-medium text-zinc-700">销售目标（元）</Label>
+                <Label htmlFor="sales-goal-base" className="text-sm font-medium text-zinc-700">保底线（元）</Label>
+                <Input
+                  id="sales-goal-base"
+                  type="number"
+                  value={salesGoalBase}
+                  onChange={(e) => setSalesGoalBase(e.target.value)}
+                  placeholder="例如：800000"
+                  className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sales-goal" className="text-sm font-medium text-zinc-700">常规线（元）</Label>
                 <Input
                   id="sales-goal"
                   type="number"
                   value={salesGoal}
                   onChange={(e) => setSalesGoal(e.target.value)}
-                  placeholder="例如：1000000"
+                  placeholder="例如：1200000"
+                  className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sales-goal-stretch" className="text-sm font-medium text-zinc-700">冲刺线（元）</Label>
+                <Input
+                  id="sales-goal-stretch"
+                  type="number"
+                  value={salesGoalStretch}
+                  onChange={(e) => setSalesGoalStretch(e.target.value)}
+                  placeholder="例如：1800000"
                   className="mt-2 rounded-full border-zinc-200 focus:border-zinc-400 focus:ring-zinc-400"
                 />
               </div>

@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
   const [selectedProject, setSelectedProject] = useState<any>(null)
+  const [activeGoalLine, setActiveGoalLine] = useState<'base' | 'goal' | 'stretch'>('goal')
   const { overdueTasks, upcomingTasks, thisWeekTasks, pendingApprovals, myPendingApprovals, pendingMembers, userSettings, loading: tasksLoading } = useTasks()
   const upcomingTaskIds = new Set(upcomingTasks.map((t: any) => t.id))
 
@@ -145,7 +146,11 @@ export default function DashboardPage() {
   }, [projectsData, userSettings])
 
   const salesGoal = userSettings?.sales_goal || 0
-  const pct = (val: number) => salesGoal > 0 ? Math.min(100, Math.round((val / salesGoal) * 100)) : null
+  const salesGoalBase = userSettings?.sales_goal_base || 0
+  const salesGoalStretch = userSettings?.sales_goal_stretch || 0
+  const hasAnyGoal = salesGoal > 0 || salesGoalBase > 0 || salesGoalStretch > 0
+  const activeGoalValue = activeGoalLine === 'base' ? salesGoalBase : activeGoalLine === 'stretch' ? salesGoalStretch : salesGoal
+  const pct = (val: number) => activeGoalValue > 0 ? Math.min(100, Math.round((val / activeGoalValue) * 100)) : null
 
   const handleQuickAction = (action: string) => {
     if (action === 'createProject') {
@@ -183,7 +188,15 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 tracking-tight">仪表板</h1>
           <p className="mt-1.5 text-sm text-zinc-500">
-            {now.getFullYear()}年 · {salesGoal > 0 ? `年度目标 ¥${salesGoal.toLocaleString()}` : '未设置年度目标'}
+            {now.getFullYear()}年 · {hasAnyGoal ? (
+              <>
+                {salesGoalBase > 0 && <span>保底 ¥{salesGoalBase.toLocaleString()}</span>}
+                {salesGoalBase > 0 && (salesGoal > 0 || salesGoalStretch > 0) && <span className="mx-1.5 text-zinc-500">·</span>}
+                {salesGoal > 0 && <span>常规 ¥{salesGoal.toLocaleString()}</span>}
+                {salesGoal > 0 && salesGoalStretch > 0 && <span className="mx-1.5 text-zinc-500">·</span>}
+                {salesGoalStretch > 0 && <span>冲刺 ¥{salesGoalStretch.toLocaleString()}</span>}
+              </>
+            ) : '未设置年度目标'}
           </p>
         </div>
         <div className="flex items-center gap-1 md:-translate-y-1 z-50 relative">
@@ -445,7 +458,14 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {metrics.map((m) => (
-          <Card key={m.label} className="rounded-2xl border-0 bg-white shadow-sm overflow-visible">
+          <Card key={m.label} className="rounded-2xl border-0 bg-white shadow-sm overflow-visible transition-shadow duration-300 hover:shadow-md relative">
+            {(salesGoalBase > 0 || salesGoal > 0 || salesGoalStretch > 0) && (
+              <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
+                {salesGoalBase > 0 && <button onClick={() => setActiveGoalLine('base')} title="保底线" className="w-3 h-3 rounded-full transition-all hover:opacity-80" style={{ background: activeGoalLine === 'base' ? '#d4d4d8' : 'transparent', border: activeGoalLine === 'base' ? 'none' : '1px solid #d4d4d8', boxSizing: 'border-box' }} />}
+                {salesGoal > 0 && <button onClick={() => setActiveGoalLine('goal')} title="常规线" className="w-3 h-3 rounded-full transition-all hover:opacity-80" style={{ background: activeGoalLine === 'goal' ? '#71717a' : 'transparent', border: activeGoalLine === 'goal' ? 'none' : '1px solid #71717a', boxSizing: 'border-box' }} />}
+                {salesGoalStretch > 0 && <button onClick={() => setActiveGoalLine('stretch')} title="冲刺线" className="w-3 h-3 rounded-full transition-all hover:opacity-80" style={{ background: activeGoalLine === 'stretch' ? '#090702' : 'transparent', border: activeGoalLine === 'stretch' ? 'none' : '1px solid #090702', boxSizing: 'border-box' }} />}
+              </div>
+            )}
             <CardContent className="px-4 pt-4 !pb-0 flex items-center gap-1 overflow-visible min-h-[160px]">
               {m.pct !== null && (
                 <div className="shrink-0 -my-1 hidden sm:block">

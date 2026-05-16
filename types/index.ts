@@ -158,6 +158,8 @@ export type Database = {
           reminder_advance_hours: number
           milestone_reminder_days: number
           sales_goal: number | null
+          sales_goal_base: number | null
+          sales_goal_stretch: number | null
           created_at: string
           updated_at: string
         }
@@ -171,6 +173,8 @@ export type Database = {
           reminder_advance_hours?: number
           milestone_reminder_days?: number
           sales_goal?: number | null
+          sales_goal_base?: number | null
+          sales_goal_stretch?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -184,6 +188,8 @@ export type Database = {
           reminder_advance_hours?: number
           milestone_reminder_days?: number
           sales_goal?: number | null
+          sales_goal_base?: number | null
+          sales_goal_stretch?: number | null
           created_at?: string
           updated_at?: string
         }
