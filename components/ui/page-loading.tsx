@@ -292,13 +292,32 @@ export function PageLoading({ variant = 'list' }: { variant?: 'list' | 'grid' | 
         </div>
         <div className="grid grid-cols-3 gap-4 mb-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-2xl bg-white shadow-sm h-[180px] px-4 flex items-center gap-4">
-              <div className="shrink-0 w-[130px] h-[130px] rounded-full bg-zinc-200/50" />
-              <div className="flex-1 space-y-2.5">
-                <div className="h-3 w-20 rounded-full bg-zinc-200/50" />
-                <div className="h-7 w-32 rounded-full bg-zinc-200/60" />
+            <div key={i} className="rounded-2xl bg-white shadow-sm h-[160px] px-4 pt-4 flex items-center gap-1 relative overflow-visible">
+              {/* 右上角三个小圆点 */}
+              <div className="absolute top-3 right-3 flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-zinc-200/40" />
+                <div className="w-3 h-3 rounded-full bg-zinc-200/50" />
+                <div className="w-3 h-3 rounded-full bg-zinc-200/60" />
+              </div>
+              {/* 左侧圆环 */}
+              <div className="shrink-0 -my-1 hidden sm:flex items-center justify-center">
+                <div className="w-[130px] h-[130px] relative flex items-center justify-center">
+                  <div className="w-[130px] h-[130px] rounded-full border-[9px] border-zinc-100" style={{ clipPath: 'inset(0 0 18% 0)' }} />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="h-4 w-8 rounded-full bg-zinc-200/60" />
+                    <div className="h-2.5 w-10 rounded-full bg-zinc-200/40 mt-1" />
+                  </div>
+                </div>
+              </div>
+              {/* 右侧信息 */}
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-16 rounded-full bg-zinc-200/50" />
+                  <div className="h-4 w-4 rounded bg-zinc-200/30" />
+                </div>
+                <div className="h-6 w-28 rounded-full bg-zinc-200/60" />
+                <div className="h-3 w-20 rounded-full bg-zinc-200/40" />
                 <div className="h-3 w-24 rounded-full bg-zinc-200/40" />
-                <div className="h-3 w-28 rounded-full bg-zinc-200/40" />
               </div>
             </div>
           ))}
