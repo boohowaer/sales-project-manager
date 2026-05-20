@@ -236,9 +236,11 @@ export default function ApprovalsPage() {
   return (
     <div className="p-8">
       <div className="flex items-end justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">审批</h1>
-          <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">审批</h1>
+            <p className="mt-2 text-zinc-500 text-sm">查看和处理审批申请</p>
+          </div>
         </div>
         {tabs.length > 1 && (
           <div className="inline-flex items-center bg-zinc-100 rounded-full p-1 h-9 whitespace-nowrap shadow-sm -translate-y-1">

@@ -739,9 +739,11 @@ export default function ProjectsPage() {
     <div className="p-4 md:p-8">
       {/* 页面标题 */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 tracking-tight">项目管理</h1>
-          <p className="mt-2 text-zinc-500 text-sm">管理您的所有销售项目</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 tracking-tight">项目管理</h1>
+            <p className="mt-2 text-zinc-500 text-sm">管理您的所有销售项目</p>
+          </div>
         </div>
         <div className="flex gap-3 items-center flex-wrap -translate-y-1">
           <div className="relative flex items-center h-9">

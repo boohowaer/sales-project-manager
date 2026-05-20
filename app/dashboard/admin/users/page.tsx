@@ -22,9 +22,11 @@ export default function UsersPage() {
   return (
     <div className="p-8">
       <div className="flex items-end justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">成员管理</h1>
-          <p className="mt-2 text-zinc-500 text-sm">管理团队成员的角色与权限</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">成员管理</h1>
+            <p className="mt-2 text-zinc-500 text-sm">管理团队成员的角色与权限</p>
+          </div>
         </div>
         <Button onClick={() => setInviteOpen(true)} className="h-9 shadow-sm -translate-y-1">
           <UserPlus className="w-4 h-4 mr-2" />

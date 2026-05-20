@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +9,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'react-hot-toast'
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -48,7 +46,7 @@ export default function RegisterPage() {
         toast.error(data.error || '注册失败，请稍后重试')
         return
       }
-      router.push('/pending')
+      window.location.href = '/pending'
     } catch (error: any) {
       toast.error(error.message || '注册失败，请稍后重试')
     } finally {

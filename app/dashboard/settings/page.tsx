@@ -124,8 +124,12 @@ export default function SettingsPage() {
     <div className="p-8 max-w-4xl">
       {/* 页面标题 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">设置</h1>
-        <p className="mt-2 text-zinc-500 text-sm">自定义您的应用体验</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">设置</h1>
+            <p className="mt-2 text-zinc-500 text-sm">自定义您的应用体验</p>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">

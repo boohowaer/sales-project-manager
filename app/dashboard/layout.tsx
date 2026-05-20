@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SidebarNavigation } from '@/components/layout/SidebarNavigation'
 import { LogoutButton } from '@/components/auth/LogoutButton'
-import { MobileSidebar } from '@/components/layout/MobileSidebar'
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { TasksProviderWrapper } from '@/components/layout/TasksProvider'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 import { UserProvider } from '@/context/UserContext'
@@ -63,17 +63,16 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      {/* 移动端抽屉式侧边栏 */}
-      <MobileSidebar navigation={navigation} />
-
+      {/* 移动端底部导航栏 */}
       <UserProvider user={ctx}>
         <DictionaryProvider>
           <TasksProviderWrapper>
             <div className="md:pl-64">
-              <main className="min-h-screen">
+              <main className="min-h-screen pb-16 md:pb-0">
                 {children}
               </main>
             </div>
+            <MobileBottomNav navigation={navigation} />
           </TasksProviderWrapper>
         </DictionaryProvider>
       </UserProvider>

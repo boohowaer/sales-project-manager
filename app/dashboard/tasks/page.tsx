@@ -332,9 +332,11 @@ export default function TasksPage() {
     <div className="p-8">
       {/* 标题行 */}
       <div className="flex items-end justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">任务管理</h1>
-          <p className="mt-2 text-zinc-500 text-sm">管理您的所有待办任务</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">任务管理</h1>
+            <p className="mt-2 text-zinc-500 text-sm">管理您的所有待办任务</p>
+          </div>
         </div>
         <div className="flex gap-3 items-center flex-wrap -translate-y-1">
           {/* 搜索 */}

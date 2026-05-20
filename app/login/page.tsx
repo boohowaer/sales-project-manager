@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from '@/lib/supabase/auth'
 import { Button } from '@/components/ui/button'
@@ -11,7 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'react-hot-toast'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,7 +27,8 @@ export default function LoginPage() {
     try {
       await signIn(email, password)
       toast.success('登录成功！')
-      router.push('/dashboard')
+      // 全页面刷新，确保 Supabase auth cookie 同步到服务端
+      window.location.href = '/dashboard'
     } catch (error: any) {
       toast.error(error.message || '登录失败，请检查邮箱和密码')
     } finally {

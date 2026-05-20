@@ -202,9 +202,11 @@ export default function CustomersPage() {
     <div className="p-8">
       {/* 页面标题 */}
       <div className="flex items-end justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">客户管理</h1>
-          <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">客户管理</h1>
+            <p className="mt-2 text-zinc-500 text-sm">管理您的所有客户信息</p>
+          </div>
         </div>
         <div className="flex gap-3 items-center -translate-y-1">
           {dataScope === 'team' && (

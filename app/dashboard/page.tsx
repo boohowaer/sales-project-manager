@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const notifRef = useRef<HTMLDivElement>(null)
   const [selectedProject, setSelectedProject] = useState<any>(null)
   const [activeGoalLine, setActiveGoalLine] = useState<'base' | 'goal' | 'stretch'>('goal')
+  const [fabOpen, setFabOpen] = useState(false)
   const { overdueTasks, upcomingTasks, thisWeekTasks, pendingApprovals, myPendingApprovals, pendingMembers, userSettings, loading: tasksLoading } = useTasks()
   const upcomingTaskIds = new Set(upcomingTasks.map((t: any) => t.id))
 
@@ -62,6 +63,20 @@ export default function DashboardPage() {
     if (notifOpen) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [notifOpen])
+
+  useEffect(() => {
+    if (!fabOpen) return
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.fab-area') && !target.closest('.fab-item')) setFabOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('touchstart', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('touchstart', handler)
+    }
+  }, [fabOpen])
 
   const loadDataRef = useRef<() => void>(() => {})
 
@@ -185,21 +200,23 @@ export default function DashboardPage() {
   return (
     <div className="p-4 md:p-8 max-w-[1600px]">
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 tracking-tight">仪表板</h1>
-          <p className="mt-1.5 text-sm text-zinc-500">
-            {now.getFullYear()}年 · {hasAnyGoal ? (
-              <>
-                {salesGoalBase > 0 && <span>保底 ¥{salesGoalBase.toLocaleString()}</span>}
-                {salesGoalBase > 0 && (salesGoal > 0 || salesGoalStretch > 0) && <span className="mx-1.5 text-zinc-500">·</span>}
-                {salesGoal > 0 && <span>常规 ¥{salesGoal.toLocaleString()}</span>}
-                {salesGoal > 0 && salesGoalStretch > 0 && <span className="mx-1.5 text-zinc-500">·</span>}
-                {salesGoalStretch > 0 && <span>冲刺 ¥{salesGoalStretch.toLocaleString()}</span>}
-              </>
-            ) : '未设置年度目标'}
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 tracking-tight">仪表板</h1>
+            <div className="mt-1.5 text-sm text-zinc-500">
+              <span>{now.getFullYear()}年 </span>
+              {hasAnyGoal && (
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1.5 gap-y-0.5 sm:gap-y-0 mt-0.5 sm:mt-0 sm:inline">
+                  {salesGoalBase > 0 && <span> · 保底 ¥{salesGoalBase.toLocaleString()}</span>}
+                  {salesGoal > 0 && <span> · 常规 ¥{salesGoal.toLocaleString()}</span>}
+                  {salesGoalStretch > 0 && <span> · 冲刺 ¥{salesGoalStretch.toLocaleString()}</span>}
+                </div>
+              )}
+              {!hasAnyGoal && <span className="sm:inline block">· 未设置年度目标</span>}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-1 md:-translate-y-1 z-50 relative">
+        <div className="hidden md:flex items-center gap-1 md:-translate-y-1 z-50 relative">
           <button
             onClick={() => handleQuickAction('createProject')}
             title="创建项目"
@@ -233,7 +250,7 @@ export default function DashboardPage() {
               )}
             </button>
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-80 max-h-[480px] overflow-y-auto bg-white rounded-2xl shadow-xl border-0 z-[100]">
+              <div className="absolute left-0 right-0 sm:left-auto sm:right-0 top-full mt-2 sm:w-80 max-h-[480px] overflow-y-auto bg-white rounded-2xl shadow-xl border-0 z-[100]">
                 <div className="p-2 pt-6">
                   {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length + pendingApprovals.length + myPendingApprovals.length + pendingMembers.length) === 0 ? (
                     <div className="p-6 text-center">
@@ -466,7 +483,7 @@ export default function DashboardPage() {
                 {salesGoalStretch > 0 && <button onClick={() => setActiveGoalLine('stretch')} title="冲刺线" className="w-3 h-3 rounded-full transition-all hover:opacity-80" style={{ background: activeGoalLine === 'stretch' ? '#090702' : 'transparent', border: activeGoalLine === 'stretch' ? 'none' : '1px solid #090702', boxSizing: 'border-box' }} />}
               </div>
             )}
-            <CardContent className="px-4 pt-4 !pb-0 flex items-center gap-1 overflow-visible min-h-[160px]">
+            <CardContent className="px-4 pt-4 pb-4 sm:!pb-0 flex items-center gap-1 overflow-visible sm:min-h-[160px]">
               {m.pct !== null && (
                 <div className="shrink-0 -my-1 hidden sm:block">
                   <CircularProgress pct={m.pct} />
@@ -500,6 +517,12 @@ export default function DashboardPage() {
                   本月新增 <span className="text-zinc-600 font-medium">{m.monthly > 0 ? `¥${Math.round(m.monthly).toLocaleString()}` : '-'}</span>
                 </div>
               </div>
+              {m.pct !== null && (
+                <div className="shrink-0 flex flex-col items-end justify-center pl-3 sm:hidden">
+                  <span className="text-2xl font-bold text-zinc-900 leading-none">{m.pct}%</span>
+                  <span className="text-[9px] text-zinc-400 mt-0.5">达成率</span>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -639,7 +662,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 本周任务 */}
-        <div className="space-y-5">
+        <div className="space-y-5 lg:max-w-none max-w-md">
           <h2 className="text-base font-semibold text-zinc-900">
             本周任务
             <span className="text-xs font-normal text-zinc-400 ml-1.5">& 已逾期任务</span>
@@ -714,6 +737,273 @@ export default function DashboardPage() {
             setSelectedProject(null)
           }}
         />
+      )}
+
+      {/* 移动端悬浮按钮 */}
+      {fabOpen && (
+        <div className="md:hidden fixed inset-0 z-[99] bg-black/10" onClick={() => setFabOpen(false)} />
+      )}
+      <div className="md:hidden fixed right-6 z-[100] fab-area" style={{ bottom: 'calc(1.5rem + 4rem + env(safe-area-inset-bottom, 0px))' }}>
+        {/* 主按钮 */}
+        <button onClick={() => setFabOpen(!fabOpen)} className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all ${fabOpen ? 'bg-zinc-600 rotate-45' : 'bg-zinc-900'}`}>
+          <span className="text-white text-2xl leading-none">+</span>
+        </button>
+      </div>
+      {/* 放射按钮 - 扇形排布（90° 圆弧，半径140px，4按钮均匀分布） */}
+      {fabOpen && (
+        <>
+          <button onClick={() => { setFabOpen(false); handleQuickAction('createProject') }} title="创建项目"
+            className="md:hidden fixed w-14 h-14 rounded-full bg-zinc-800 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform z-[100] fab-item"
+            style={{ bottom: 'calc(10.5rem + 4rem + env(safe-area-inset-bottom, 0px))', right: 28 }}>
+            <FolderKanban className="w-6 h-6" />
+          </button>
+          <button onClick={() => { setFabOpen(false); handleQuickAction('addTask') }} title="添加任务"
+            className="md:hidden fixed w-14 h-14 rounded-full bg-zinc-800 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform z-[100] fab-item"
+            style={{ bottom: 'calc(9.25rem + 4rem + env(safe-area-inset-bottom, 0px))', right: 98 }}>
+            <CheckSquare className="w-6 h-6" />
+          </button>
+          <button onClick={() => { setFabOpen(false); handleQuickAction('updateProgress') }} title="更新进展"
+            className="md:hidden fixed w-14 h-14 rounded-full bg-zinc-800 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform z-[100] fab-item"
+            style={{ bottom: 'calc(6.125rem + 4rem + env(safe-area-inset-bottom, 0px))', right: 148 }}>
+            <FileEdit className="w-6 h-6" />
+          </button>
+          <button onClick={() => { setFabOpen(false); setNotifOpen(true) }} title="通知"
+            className="md:hidden fixed w-14 h-14 rounded-full bg-zinc-800 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform z-[100] fab-item"
+            style={{ bottom: 'calc(1.75rem + 4rem + env(safe-area-inset-bottom, 0px))', right: 168 }}>
+            <Bell className="w-6 h-6" />
+            {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length + pendingApprovals.length + myPendingApprovals.length + pendingMembers.length) > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            )}
+          </button>
+        </>
+      )}
+
+      {/* 移动端通知弹窗 */}
+      {notifOpen && (
+        <div className="md:hidden fixed inset-0 z-[100] flex items-end justify-center" onClick={() => setNotifOpen(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="relative w-full max-h-[80vh] overflow-y-auto bg-white rounded-t-2xl shadow-xl z-10 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white px-5 pt-4 pb-3 border-b border-zinc-100 flex items-center justify-between z-10">
+              <h3 className="text-base font-semibold text-zinc-900">提醒</h3>
+              <button onClick={() => setNotifOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100">
+                <X className="w-4 h-4 text-zinc-500" />
+              </button>
+            </div>
+            <div className="p-2 pb-8">
+              {(notifProjects.toSign.length + notifProjects.toAccept.length + notifProjects.toInvoice.length + notifProjects.toPayment.length + overdueTasks.length + upcomingTasks.length + pendingApprovals.length + myPendingApprovals.length + pendingMembers.length) === 0 ? (
+                <div className="p-6 text-center">
+                  <CheckCircle className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+                  <p className="text-sm text-zinc-500">暂无待处理提醒</p>
+                </div>
+              ) : (
+                <>
+                  {pendingApprovals.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-2">
+                        <ClipboardCheck className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs font-medium text-blue-600">待我审批</span>
+                        <span className="text-xs text-zinc-400">({pendingApprovals.length})</span>
+                      </div>
+                      {pendingApprovals.map((req: any) => (
+                        <Link key={req.id} href="/dashboard/approvals" onClick={() => setNotifOpen(false)}>
+                          <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-blue-50 transition-colors cursor-pointer">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-zinc-900 truncate">{{ create_customer: '新建客户', create_project: '新建项目', update_project: '修改项目' }[req.type as string] ?? req.type}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5 truncate">{req.payload?.name ?? ''}</p>
+                              <p className="text-xs text-blue-500 mt-1">等待你审批</p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  {myPendingApprovals.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-2">
+                        <ClipboardCheck className="w-3.5 h-3.5 text-zinc-400" />
+                        <span className="text-xs font-medium text-zinc-500">我提交的审批</span>
+                        <span className="text-xs text-zinc-400">({myPendingApprovals.length})</span>
+                      </div>
+                      {myPendingApprovals.map((req: any) => (
+                        <Link key={req.id} href="/dashboard/approvals" onClick={() => setNotifOpen(false)}>
+                          <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-50 transition-colors cursor-pointer">
+                            <div className="w-2 h-2 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-zinc-900 truncate">{{ create_customer: '新建客户', create_project: '新建项目', update_project: '修改项目' }[req.type as string] ?? req.type}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5 truncate">{req.payload?.name ?? ''}</p>
+                              <p className="text-xs text-zinc-400 mt-1">等待 {{ 1: '销售经理', 2: '超级管理员' }[req.current_step as number] ?? `第${req.current_step}步`} 审批</p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  {pendingMembers.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-2">
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-xs font-medium text-emerald-600">成员申请</span>
+                        <span className="text-xs text-zinc-400">({pendingMembers.length})</span>
+                      </div>
+                      {pendingMembers.map((m: any) => (
+                        <Link key={m.id} href="/dashboard/admin/users" onClick={() => setNotifOpen(false)}>
+                          <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-emerald-50 transition-colors cursor-pointer">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-zinc-900 truncate">{m.email}</p>
+                              <p className="text-xs text-emerald-600 mt-1">申请加入团队</p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  {(overdueTasks.length > 0 || upcomingTasks.length > 0) && (
+                    <div className="mb-2">
+                      {overdueTasks.length > 0 && (
+                        <>
+                          <div className="flex items-center gap-1.5 px-3 py-2">
+                            <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                            <span className="text-xs font-medium text-red-600">任务已过期</span>
+                            <span className="text-xs text-zinc-400">({overdueTasks.length})</span>
+                          </div>
+                          {overdueTasks.map((task: any) => (
+                            <div key={task.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-red-50 transition-colors">
+                              <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-zinc-900 truncate">{task.title}</p>
+                                <p className="text-xs text-zinc-500 mt-0.5">{task.projects?.name}</p>
+                                <p className="text-xs text-red-500 mt-1">{task.due_date ? new Date(task.due_date).toLocaleDateString('zh-CN') : '无日期'} 已过期</p>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                      {upcomingTasks.length > 0 && (
+                        <>
+                          <div className="flex items-center gap-1.5 px-3 py-2">
+                            <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                            <span className="text-xs font-medium text-zinc-600">任务即将到期</span>
+                            <span className="text-xs text-zinc-400">({upcomingTasks.length})</span>
+                          </div>
+                          {upcomingTasks.map((task: any) => (
+                            <div key={task.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-50 transition-colors">
+                              <div className="w-2 h-2 rounded-full bg-zinc-300 mt-1.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-zinc-900 truncate">{task.title}</p>
+                                <p className="text-xs text-zinc-500 mt-0.5">{task.projects?.name}</p>
+                                <p className="text-xs text-zinc-400 mt-1">{task.due_date ? new Date(task.due_date).toLocaleDateString('zh-CN') : '无日期'} 到期</p>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {notifProjects.toSign.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-2">
+                        <FileCheck className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs font-medium text-blue-600">签约提醒</span>
+                        <span className="text-xs text-zinc-400">({notifProjects.toSign.length})</span>
+                      </div>
+                      {notifProjects.toSign.map((p: any) => {
+                        const isOverdue = p.expected_close_date && new Date(p.expected_close_date) < new Date(new Date().toDateString())
+                        return (
+                          <div key={p.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-blue-50 transition-colors">
+                            <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-zinc-900 truncate">{p.name}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5">{p.customers?.name}</p>
+                              {p.expected_close_date && (
+                                <p className={`text-xs mt-1 ${isOverdue ? 'text-red-500' : 'text-zinc-400'}`}>
+                                  {new Date(p.expected_close_date).toLocaleDateString('zh-CN')} {isOverdue ? '已逾期' : '计划签约'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {notifProjects.toAccept.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                        <span className="text-xs font-medium text-green-600">验收提醒</span>
+                        <span className="text-xs text-zinc-400">({notifProjects.toAccept.length})</span>
+                      </div>
+                      {notifProjects.toAccept.map((p: any) => {
+                        const isOverdue = new Date(p.pendingStages[0].planned_accepted_date) < new Date(new Date().toDateString())
+                        return (
+                          <div key={p.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-green-50 transition-colors">
+                            <div className="w-2 h-2 rounded-full bg-green-400 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-zinc-900 truncate">{p.name}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5">{p.customers?.name} · {p.pendingStages.length} 段</p>
+                              <p className={`text-xs mt-1 ${isOverdue ? 'text-red-500' : 'text-zinc-400'}`}>
+                                {new Date(p.pendingStages[0].planned_accepted_date).toLocaleDateString('zh-CN')} {isOverdue ? '已逾期' : '计划验收'}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {notifProjects.toInvoice.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-2">
+                        <Receipt className="w-3.5 h-3.5 text-purple-500" />
+                        <span className="text-xs font-medium text-purple-600">开票提醒</span>
+                        <span className="text-xs text-zinc-400">({notifProjects.toInvoice.length})</span>
+                      </div>
+                      {notifProjects.toInvoice.map((p: any) => {
+                        const isOverdue = new Date(p.pendingStages[0].planned_invoiced_date) < new Date(new Date().toDateString())
+                        return (
+                          <div key={p.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-purple-50 transition-colors">
+                            <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-zinc-900 truncate">{p.name}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5">{p.customers?.name} · {p.pendingStages.length} 段</p>
+                              <p className={`text-xs mt-1 ${isOverdue ? 'text-red-500' : 'text-zinc-400'}`}>
+                                {new Date(p.pendingStages[0].planned_invoiced_date).toLocaleDateString('zh-CN')} {isOverdue ? '已逾期' : '计划开票'}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {notifProjects.toPayment.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-2">
+                        <DollarSign className="w-3.5 h-3.5 text-amber-500" />
+                        <span className="text-xs font-medium text-amber-600">回款提醒</span>
+                        <span className="text-xs text-zinc-400">({notifProjects.toPayment.length})</span>
+                      </div>
+                      {notifProjects.toPayment.map((p: any) => {
+                        const isOverdue = new Date(p.pendingStages[0].planned_paid_date) < new Date(new Date().toDateString())
+                        return (
+                          <div key={p.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-amber-50 transition-colors">
+                            <div className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-zinc-900 truncate">{p.name}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5">{p.customers?.name} · {p.pendingStages.length} 段</p>
+                              <p className={`text-xs mt-1 ${isOverdue ? 'text-red-500' : 'text-zinc-400'}`}>
+                                {new Date(p.pendingStages[0].planned_paid_date).toLocaleDateString('zh-CN')} {isOverdue ? '已逾期' : '计划回款'}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

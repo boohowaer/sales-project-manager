@@ -498,9 +498,11 @@ export default function UpdatesPage() {
     <div className="p-8">
       {/* 页面标题 */}
       <div className="flex items-end justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">项目进展</h1>
-          <p className="mt-2 text-zinc-500 text-sm">每周填写项目进展，记录签署、验收、开票、回款情况</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">项目进展</h1>
+            <p className="mt-2 text-zinc-500 text-sm">每周填写项目进展，记录签署、验收、开票、回款情况</p>
+          </div>
         </div>
         <div className="flex items-center gap-3 -translate-y-1">
           <div className="relative flex items-center h-9">

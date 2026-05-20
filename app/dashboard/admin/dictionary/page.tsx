@@ -21,8 +21,12 @@ export default function DictionaryPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">数据字典</h1>
-        <p className="mt-2 text-zinc-500 text-sm">管理系统中的下拉选项与分类数据</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight">数据字典</h1>
+            <p className="mt-2 text-zinc-500 text-sm">管理系统中的下拉选项与分类数据</p>
+          </div>
+        </div>
       </div>
       <DictionaryManager entries={entries} onUpdate={loadEntries} />
     </div>
