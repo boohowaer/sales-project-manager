@@ -22,12 +22,16 @@ export async function PATCH(
 
   const supabase = createAdminClient()
 
-  const { data: task } = await supabase
+  const { data: task, error: fetchError } = await supabase
     .from('tasks')
     .select('user_id')
     .eq('id', taskId)
     .single()
 
+  if (fetchError) {
+    console.error('Task fetch error:', fetchError.message)
+    return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  }
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   if (task.user_id !== ctx.userId) {
