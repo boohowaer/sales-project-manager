@@ -3,10 +3,12 @@ import { createClient } from '@supabase/supabase-js'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 
 function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) {
+    console.error('Missing env:', { url: !!url, key: !!key })
+  }
+  return createClient(url!, key!)
 }
 
 // PATCH /api/tasks/[id] — 任务 owner 或 assignee 均可更新
