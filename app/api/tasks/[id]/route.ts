@@ -3,12 +3,10 @@ import { createClient } from '@supabase/supabase-js'
 import { getUserTeamContext } from '@/lib/auth/get-user-role'
 
 function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) {
-    console.error('Missing env:', { url: !!url, key: !!key })
-  }
-  return createClient(url!, key!)
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 }
 
 // PATCH /api/tasks/[id] — 任务 owner 或 assignee 均可更新
@@ -24,16 +22,12 @@ export async function PATCH(
 
   const supabase = createAdminClient()
 
-  const { data: task, error: fetchError } = await supabase
+  const { data: task } = await supabase
     .from('tasks')
     .select('user_id')
     .eq('id', taskId)
     .single()
 
-  if (fetchError) {
-    console.error('Task fetch error:', fetchError.message)
-    return NextResponse.json({ error: fetchError.message }, { status: 500 })
-  }
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   if (task.user_id !== ctx.userId) {
